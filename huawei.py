@@ -35,23 +35,27 @@ Try Reverse Eng:
         8: smsreport (failed)
         9: alert
         10: info
+
+     ConnectionStatus:
+       900: connecting
+       901: connected
+       902: disconnected
+       903: disconnecting
+       ...
+
 '''
 
 class HuaweiE3372(object):
     BASE_URL = 'http://{host}'
     COOKIE_URL = '/html/index.html'
+
+    # all unmapped APIs
+    # details also available on: https://blog.hqcodeshop.fi/archives/259-Huawei-E5186-AJAX-API.html
     XML_APIS = [
-#    '/api/device/basic_information',
-#    '/api/device/information',
-#    '/api/device/signal',
-#    '/api/monitoring/status',
-#    '/api/monitoring/traffic-statistics',
-#    '/api/dialup/connection',
-#    '/api/global/module-switch',
-#    '/api/net/current-plmn',
-#    '/api/net/net-mode',
-#    '/api/sms/sms-count',
-#    '/api/monitoring/check-notifications',  
+        '/api/device/basic_information',
+        '/api/monitoring/status',
+        '/api/global/module-switch',
+        '/api/net/net-mode',
     ]
     session = None
 
@@ -60,6 +64,7 @@ class HuaweiE3372(object):
         self.base_url = self.BASE_URL.format(host=host)
         self.session = requests.Session()
         self.tokens = []
+        self.__device_information = None
         # get a session cookie by requesting the COOKIE_URL
         r = self.session.get(self.base_url + self.COOKIE_URL)
 
@@ -88,7 +93,18 @@ class HuaweiE3372(object):
         data = xmltodict.parse( xml)
 
         if "error" in data:
-            raise Exception( data['error']['code'], data['error']['message'])
+            code    = int( data['error']['code'])
+            message = data['error']['message']
+
+            if code == 100010:
+                #FIXME should use better exception
+                raise FileNotFoundError()
+            elif code == 100005:
+                #FIXME should use correct exception
+                raise Exception( code, "missing argument")
+            else:
+                # unknown case
+                raise Exception( code, message)
 
         if not "response" in data:
             raise Exception("parse exception")
@@ -102,8 +118,6 @@ class HuaweiE3372(object):
         '''
 
         return data.get("response", None)
-
-
 
     def __get(self, path):
 
@@ -140,6 +154,135 @@ class HuaweiE3372(object):
             headers = { '__RequestVerificationToken' : token },
             data = payload
         ))
+
+    def device_information( self):
+        '''get device information
+
+        return hash with keys: 
+            'DeviceName', 'E3372h-320' 
+            'SerialNumber', ...
+            'Imei', ...
+            'Imsi', ...
+            'Iccid', ...
+            'Msisdn', ...  # aka phone number
+            'HardwareVersion', 'CL4E3372HM', 
+            'SoftwareVersion', '10.0.3.1(H192SP1C983', 
+            'WebUIVersion', 'WEBUI 10.0.3.1(W13SP2C7110', 
+            'MacAddress1', ....
+            'MacAddress2', None, 
+            'WanIPAddress', ...
+            'wan_dns_address', ... (coma separated)
+            'WanIPv6Address', None, 
+            'wan_ipv6_dns_address', None, 
+            'ProductFamily', 'LTE', 
+            'Classify', 'hilink', 
+            'supportmode', 'LTE|WCDMA|GSM', 
+            'workmode', 'LTE', 
+            'submask', '255.255.255.255', 
+            'Mccmnc', '20815', 
+            'iniversion', 'E3372h-320-CUST 10.0.3.2(C1217', 
+            'uptime', '476914'  # in second 
+            'ImeiSvn', '05', 
+            'spreadname_en', None, 
+            'spreadname_zh', None
+        '''
+
+        # cache data
+        if self.__device_information == None:
+            self.__device_information = self.__get('/api/device/information')
+
+        return self.__device_information
+
+    def device_signal( self):
+        ''' get device signal info
+
+            explainations:
+                https://wiki.teltonika-networks.com/view/Mobile_Signal_Strength_Recommendations
+
+            RSSI:
+                regarding RSSI for 4G
+                > -65 dBm	Excellent	Strong signal with maximum data speeds
+                -65 dBm to -75 dBm	Good	Strong signal with good data speeds
+                -75 dBm to -85 dBm	Fair	Fair but useful, fast and reliable data speeds may be attained, but marginal data with drop-outs is possible
+                -85 dBm to -95 dBm	Poor	Performance will drop drastically
+                <= -95 dBm	No signal	Disconnection
+
+                more info: https://wiki.teltonika-networks.com/view/RSSI
+
+            return values:
+                ('pci', u'1')
+                ('sc', None)
+                ('cell_id', u'.....')
+                ('rsrq', u'-13.0dB')
+                ('rsrp', u'-106dBm')
+                ('rssi', u'-75dBm')
+                ('sinr', u'6dB')
+                ('rscp', None)
+                ('ecio', None)
+                ('mode', u'7')
+                ('ulbandwidth', u'15MHz')
+                ('dlbandwidth', u'15MHz')
+                ('txpower', u'PPusch:22dBm PPucch:11dBm PSrs:22dBm PPrach:17dBm')
+                ('tdd', None)
+                ('ul_mcs', u'mcsUpCarrier1:6')
+                ('dl_mcs', u'mcsDownCarrier1Code0:1 mcsDownCarrier1Code1:0')
+                ('earfcn', u'DL:1675 UL:19675')
+                ('rrc_status', None)
+                ('rac', None)
+                ('lac', None)
+                ('tac', u'5902')
+                ('band', u'3')
+                ('nei_cellid', u'No1:1No2:62')
+                ('plmn', u'20815')
+                ('ims', None)
+                ('wdlfreq', None)
+                ('lteulfreq', u'17575')
+                ('ltedlfreq', u'18525')
+                ('transmode', None)
+                ('enodeb_id', u'0407729')
+                ('cqi0', u'32639')
+                ('cqi1', u'32639')
+                ('ulfrequency', u'1757500kHz')
+                ('dlfrequency', u'1852500kHz')
+                ('arfcn', None)
+                ('bsic', None)
+                ('rxlev', None)])
+
+        '''
+        return self.__get('/api/device/signal')
+
+    def traffic_statistics( self):
+        '''return statistics
+
+        values:
+            (u'CurrentConnectTime', u'2174')
+            (u'CurrentUpload', u'390')
+            (u'CurrentDownload', u'255')
+            (u'CurrentDownloadRate', u'0')
+            (u'CurrentUploadRate', u'0')
+            (u'TotalUpload', u'1800371')
+            (u'TotalDownload', u'687051')
+            (u'TotalConnectTime', u'612412')
+            (u'showtraffic', u'1')
+        '''
+
+        return self.__get( "/api/monitoring/traffic-statistics")
+
+    def get_provider( self):
+        ''' get provider name
+
+        return:
+            (u'State', u'0')
+            (u'FullName', u'...')
+            (u'ShortName', u'...')
+            (u'Numeric', u'...')
+            (u'Rat', u'7')
+            (u'Spn', None)
+        '''
+        return self.__get('/api/net/current-plmn');
+
+    def get_phone( self):
+        return self.device_information().get('Msisdn')
 
     def get(self, path):
         return self.__get( path)
@@ -216,16 +359,7 @@ class HuaweiE3372(object):
 
         return self.__post( "/api/sms/send-sms", payload)
 
-    # FIXME
-    """
-    GET http://192.168.8.1/api/sms/sms-count-contact
-
-    <response>
-    <count>2</count>
-    </response>
-    """
-
-    def sms_count_contact(self, phone):
+    def sms_count_contact(self, phone=None):
         '''count messages for a given phone
 
         Debug:
@@ -235,8 +369,15 @@ class HuaweiE3372(object):
         </response>
         '''
 
-        payload='<?xml version: "1.0" encoding="UTF-8"?><request><phone>'+escape(phone)+'</phone></request>'
-        data = self.__post( '/api/sms/sms-count-contact', payload)
+        # for scope
+        data=None
+
+        if phone == None:
+            data = self.__get( "/api/sms/sms-count-contact")
+
+        else:
+            payload='<?xml version: "1.0" encoding="UTF-8"?><request><phone>'+escape(phone)+'</phone></request>'
+            data = self.__post( '/api/sms/sms-count-contact', payload)
 
         return int( data.get("count"))
 
@@ -379,6 +520,42 @@ class HuaweiE3372(object):
 
         return self.__post( "/api/sms/sms-delete-phone", payload)
 
+    def switch_modem(self, state=None):
+        '''Read or Activate data modem
+        '''
+
+        if state == None:
+            return self.__get( '/api/dialup/mobile-dataswitch').get('dataswitch') == '1'
+
+        if state:
+            #activate modem (4g)
+            return self.__post( '/api/dialup/mobile-dataswitch', '<?xml version: "1.0" encoding="UTF-8"?><request><dataswitch>1</dataswitch></request>')
+        else:
+            #disable modem (4g)
+            return self.__post( '/api/dialup/mobile-dataswitch', '<?xml version: "1.0" encoding="UTF-8"?><request><dataswitch>0</dataswitch></request>')
+
+
+    def dialup_connection( self):
+        '''Get dialup connection information
+
+        return
+            ('RoamAutoConnectEnable', u'0')
+            ('MaxIdelTime', u'0')
+            ('ConnectMode', u'0')
+            ('MTU', u'1500')
+            ('auto_dial_switch', u'1')
+            ('pdp_always_on', u'0')
+        '''
+        return self.__get( "/api/dialup/connection")
+
+    def reboot( self):
+        '''reboot device
+
+        beware: you will have to if up usb ethernet if your host is not configured to do it automatically...
+
+        '''
+        return self.__post( '/api/device/control', '<?xml version: "1.0" encoding="UTF-8"?><request><Control>1</Control></request>')
+
 
 
 # -------------------------------------------------------------------------------------------------------
@@ -388,11 +565,31 @@ def main():
 
     e3372 = HuaweiE3372()
 
-    return
+    print "my phone number: "+e3372.get_phone();
+    print e3372.traffic_statistics()
+    print e3372.get_provider()
+    print e3372.dialup_connection()
+    #print e3372.reboot()
+    #return
+    #print e3372.device_signal();
+
+    
+    #for path in e3372.XML_APIS:
+    #    print(path)
+    #    for key,value in e3372.get(path).items():
+    #      print(key,value)
+    #return
+
+
+    #print e3372.switch_modem( False)
+    #print e3372.switch_modem( )
+    #print e3372.switch_modem( True)
+    #print e3372.switch_modem( )
+
     print e3372.check_notifications()
     print e3372.sms_count()
 
-    #print e3372.sms_count_contact( phone)
+    print e3372.sms_count_contact( )
 
     contacts = e3372.sms_list_contact()
 
@@ -402,9 +599,12 @@ def main():
     # get first phone in contact
     phone = contacts[0]["phone"]
 
+    print e3372.sms_count_contact( phone)
+
     lastindex = 0
 
-    messages = e3372.sms_list_phone( phone)
+    print "messages..."
+    messages = e3372.sms_list_phone(  phone)
     for message in messages:
         print message
         index = int( message['index'])
@@ -417,12 +617,6 @@ def main():
     #print e3372.send_sms( phone, "fin transaction!", lastindex+1)
     #print e3372.sms_delete_sms( [index])
     #print e3372.sms_delete_phone( [1, 2])
-
-    #for path in e3372.XML_APIS:
-    #    print(path)
-    #    for key,value in e3372.get(path).items():
-    #      print(key,value)
-
 
 if __name__ == "__main__":
     main()
