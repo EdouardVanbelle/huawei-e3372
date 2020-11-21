@@ -63,28 +63,61 @@ class HuaweiE3372(object):
         # get a session cookie by requesting the COOKIE_URL
         r = self.session.get(self.base_url + self.COOKIE_URL)
 
-    def __get(self, path):
+    def __api_decode( self, response):
+        '''helper to decode answer from API
+        '''
 
-        #DEBUG print "GET "+self.base_url + path
+        # FIXME: is response.raise_for_status() better ?
+        if not response.ok:
+            raise Exception( response)
 
-        response = self.session.get( self.base_url + path)
         # check additional token in answer
         if '__RequestVerificationToken' in response.headers:
             self.tokens.append( response.headers['__RequestVerificationToken'])
             #DEBUG print "additional token "+response.headers['__RequestVerificationToken']
 
-        return response
+        # Don't check content-type as it is always a text/html event for pure XML answer
+        # print "content: "+response.headers.get('content-type')
+
+        xml = response.text
+
+        # ensure we have a XML answer
+        if not xml.startswith( "<?xml", 0, 5):
+            raise Exception( "This is not a XML answer")
+
+        data = xmltodict.parse( xml)
+
+        if "error" in data:
+            raise Exception( data['error']['code'], data['error']['message'])
+
+        if not "response" in data:
+            raise Exception("parse exception")
+
+        '''
+        format: 
+        <error>
+        <code>113055</code>
+        <message></message>
+        </error>
+        '''
+
+        return data.get("response", None)
+
+
+
+    def __get(self, path):
+
+        #DEBUG print "GET "+self.base_url + path
+
+        return self.__api_decode( self.session.get( self.base_url + path))
 
     def __get_token(self):
-        response=self.__get( "/api/webserver/token")
-
-        # FIXME: shoud ensure that content it the correct one
-        data=xmltodict.parse( response.content)
+        data=self.__get( "/api/webserver/token")
 
         #FIXME better notation ?
-        token = data.get('response', None).get('token', None);
+        token = data.get('token', None);
 
-        print "TOKEN "+token
+        #DEBUG print "TOKEN "+token
 
         #DEBUG print "got token "+token
         self.tokens.append( token);
@@ -101,24 +134,15 @@ class HuaweiE3372(object):
         #DEBUG print "sending : "+payload
 
         # XXX: do we need to force content ? Content-Type: application/x-www-form-urlencoded; charset=UTF-8;
-        response = self.session.request( 
+        return self.__api_decode( self.session.request( 
             'POST', 
             self.base_url + path,
             headers = { '__RequestVerificationToken' : token },
             data = payload
-        )
-
-        # check additional token in answer
-        if '__RequestVerificationToken' in response.headers:
-            self.tokens.append( response.headers['__RequestVerificationToken'])
-            #DEBUG print "additional token "+response.headers['__RequestVerificationToken']
-
-        # FIXME: should check answer (OK ? or any error ?)
-
-        return response
+        ))
 
     def get(self, path):
-        return xmltodict.parse( self.__get( path).text).get('response',None)
+        return self.__get( path)
 
     def check_notifications( self):
         '''Check for notifications
@@ -138,7 +162,7 @@ class HuaweiE3372(object):
         </response>
         '''
 
-        data = xmltodict.parse( self.__get( '/api/monitoring/check-notifications').content).get('response', None)
+        data = self.__get( '/api/monitoring/check-notifications')
 
         return {
             "unreadMessage": int( data.get("UnreadMessage", None)),
@@ -169,7 +193,7 @@ class HuaweiE3372(object):
         </response>
         '''
 
-        return xmltodict.parse( self.__get( '/api/sms/sms-count').content).get('response', None)
+        return self.__get( '/api/sms/sms-count')
 
     def send_sms(self, phone, message, index=0):
         """Send a sms to a given phone
@@ -190,10 +214,7 @@ class HuaweiE3372(object):
             '</request>'
         )
 
-        response = self.__post( "/api/sms/send-sms", payload)
-
-        print response.content
-        return response
+        return self.__post( "/api/sms/send-sms", payload)
 
     # FIXME
     """
@@ -215,9 +236,9 @@ class HuaweiE3372(object):
         '''
 
         payload='<?xml version: "1.0" encoding="UTF-8"?><request><phone>'+escape(phone)+'</phone></request>'
-        data = xmltodict.parse( self.__post( '/api/sms/sms-count-contact', payload).content)
+        data = self.__post( '/api/sms/sms-count-contact', payload)
 
-        return int( data.get("response").get("count"))
+        return int( data.get("count"))
 
 
     def sms_list_contact( self, index=1, count=20):
@@ -256,8 +277,7 @@ class HuaweiE3372(object):
         '''
 
         payload = '<?xml version: "1.0" encoding="UTF-8"?><request><pageindex>'+str( index)+'</pageindex><readcount>'+str(count)+'</readcount></request>'
-        response = self.__post( "/api/sms/sms-list-contact", payload)
-        data = xmltodict.parse( response.content).get("response", None)
+        data = self.__post( "/api/sms/sms-list-contact", payload)
 
         count = int( data.get("Count", None))
         print "count: "+str(count)
@@ -302,16 +322,18 @@ class HuaweiE3372(object):
         '''
 
         payload = '<?xml version: "1.0" encoding="UTF-8"?><request><phone>'+escape(phone)+'</phone><pageindex>'+str( index)+'</pageindex><readcount>'+str(count)+'</readcount></request>'
-        response = self.__post( "/api/sms/sms-list-phone", payload)
+        data = self.__post( "/api/sms/sms-list-phone", payload)
 
-        data = xmltodict.parse( response.content).get("response", None)
+        print data
+
+        # FIXME
         count = int( data.get("count", None))
         print "count "+str(count)
-        for message in data.get("messages", None).get("message"):
-            print "------ message"
-            print message
 
-        return response
+        if count == 1:
+            return [ data.get("messages").get("message") ]
+        else:
+            return data.get("messages", None).get("message")
 
 
     def sms_set_read( self, index):
@@ -322,28 +344,79 @@ class HuaweiE3372(object):
 
         <?xml version="1.0" encoding="UTF-8"?><response>OK</response>
         """
-        payload='<?xml version: "1.0" encoding="UTF-8"?><request><Index>'+str(index)+'</Index></request>'
-        response = self.__post( "/api/sms/set-read", payload)
 
-        return response
+        if not isinstance( index, list):
+            index = [ index ]
+
+        payload = '<?xml version: "1.0" encoding="UTF-8"?><request><Index>'+('</Index><Index>').join( map( lambda x : str(x), index))+'</Index></request>'
+
+        return self.__post( "/api/sms/set-read", payload)
+
+
+    def sms_delete_sms( self, index):
+        """Delete one or multiple sms
+
+        """
+
+        if not isinstance( index, list):
+            index = [ index ]
+
+        payload = '<?xml version: "1.0" encoding="UTF-8"?><request><Index>'+('</Index><Index>').join( map( lambda x : str(x), index))+'</Index></request>'
+
+        return self.__post( "/api/sms/delete-sms", payload)
+
+    def sms_delete_phone( self, phone):
+        """Delete one or multiple phones
+
+        <?xml version: "1.0" encoding="UTF-8"?><request><Phones><Phone>+33123456789</Phone></Phones></request>
+        """
+
+        if not isinstance( phone, list):
+            phone = [ phone ]
+
+
+        payload = '<?xml version: "1.0" encoding="UTF-8"?><request><Phones><Phone>'+('</Phone><Phone>').join( map( lambda x : str(x), phone))+'</Phone></Phones></request>'
+
+        return self.__post( "/api/sms/sms-delete-phone", payload)
 
 
 
 # -------------------------------------------------------------------------------------------------------
 
 def main():
+
+
     e3372 = HuaweiE3372()
+
+    return
     print e3372.check_notifications()
     print e3372.sms_count()
-    #print e3372.sms_count_contact("+33123456789")
 
-    e3372.sms_list_contact()
-    #e3372.sms_list_phone("+33123456789")
-    e3372.sms_set_read( 40015);
-    #e3372.sms_list_phone("+33123456789")
-    #e3372.send_sms( "+33123456789", "ca marche super (tes3)!", index=4008)
+    #print e3372.sms_count_contact( phone)
 
-    #print len( "hello")
+    contacts = e3372.sms_list_contact()
+
+    for contact in contacts:
+        print "From: "+contact["phone"]+" message: "+contact["content"]
+
+    # get first phone in contact
+    phone = contacts[0]["phone"]
+
+    lastindex = 0
+
+    messages = e3372.sms_list_phone( phone)
+    for message in messages:
+        print message
+        index = int( message['index'])
+        lastindex = index
+        if int( message['smstat']) == 0:
+            # unread message, acknowledge it
+            print "acknowledge message ..."
+            print e3372.sms_set_read( index);
+
+    #print e3372.send_sms( phone, "fin transaction!", lastindex+1)
+    #print e3372.sms_delete_sms( [index])
+    #print e3372.sms_delete_phone( [1, 2])
 
     #for path in e3372.XML_APIS:
     #    print(path)
