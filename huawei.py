@@ -28,13 +28,13 @@ Try Reverse Eng:
         0 received
 
     smstype
-        1
-        2
-        4 5 6: multisms
-        7: smsreport (success)
+        1 simple (less than 160 chars)
+        2 aggregated (more than 160 chars)
+        4 5 6: multiusers (MMS: case not managed by this device)
+        7: smsreport (success) ? ?
         8: smsreport (failed)
-        9: alert
-        10: info
+        9: alert ?
+        10: info ?
 
      ConnectionStatus:
        900: connecting
@@ -420,12 +420,16 @@ class HuaweiE3372(object):
         payload = '<?xml version: "1.0" encoding="UTF-8"?><request><pageindex>'+str( index)+'</pageindex><readcount>'+str(count)+'</readcount></request>'
         data = self.__post( "/api/sms/sms-list-contact", payload)
 
+        # XXX check for pagination
         count = int( data.get("Count", None))
-        print "count: "+str(count)
-        for message in data.get("messages", None).get("message", None):
-            print message
 
-        return data.get("messages", None).get("message", None)
+        #for message in data.get("messages", None).get("message", None):
+        #    print message
+
+        if count == 1:
+            return [ data.get("messages").get("message") ]
+        else:
+            return data.get("messages").get("message")
 
     def sms_list_phone( self, phone, index=1, count=20):
         '''
@@ -465,16 +469,13 @@ class HuaweiE3372(object):
         payload = '<?xml version: "1.0" encoding="UTF-8"?><request><phone>'+escape(phone)+'</phone><pageindex>'+str( index)+'</pageindex><readcount>'+str(count)+'</readcount></request>'
         data = self.__post( "/api/sms/sms-list-phone", payload)
 
-        print data
-
-        # FIXME
+        # XXX check for pagination
         count = int( data.get("count", None))
-        print "count "+str(count)
 
         if count == 1:
             return [ data.get("messages").get("message") ]
         else:
-            return data.get("messages", None).get("message")
+            return data.get("messages").get("message")
 
 
     def sms_set_read( self, index):
@@ -565,12 +566,11 @@ def main():
 
     e3372 = HuaweiE3372()
 
-    print "my phone number: "+e3372.get_phone();
-    print e3372.traffic_statistics()
-    print e3372.get_provider()
-    print e3372.dialup_connection()
-    #print e3372.reboot()
-    #return
+    print "device phone number: "+e3372.get_phone();
+
+    #print e3372.traffic_statistics()
+    #print e3372.get_provider()
+    #print e3372.dialup_connection()
     #print e3372.device_signal();
 
     
@@ -588,31 +588,39 @@ def main():
 
     print e3372.check_notifications()
     print e3372.sms_count()
-
-    print e3372.sms_count_contact( )
+    print e3372.sms_count_contact()
 
     contacts = e3372.sms_list_contact()
 
-    for contact in contacts:
-        print "From: "+contact["phone"]+" message: "+contact["content"]
-
-    # get first phone in contact
-    phone = contacts[0]["phone"]
-
-    print e3372.sms_count_contact( phone)
-
     lastindex = 0
 
-    print "messages..."
-    messages = e3372.sms_list_phone(  phone)
-    for message in messages:
-        print message
-        index = int( message['index'])
-        lastindex = index
-        if int( message['smstat']) == 0:
-            # unread message, acknowledge it
-            print "acknowledge message ..."
-            print e3372.sms_set_read( index);
+    for contact in contacts:
+
+
+        #print "From: "+contact["phone"]+" message: "+contact["content"]
+
+        # get first phone in contact
+        phone = contact["phone"]
+
+        print "--------------- "+phone+" has "+str( e3372.sms_count_contact( phone))+" messages "
+
+        print contact
+
+        messages = e3372.sms_list_phone(  phone)
+        for message in messages:
+            print "message:"
+            print message
+            index = int( message['index'])
+
+            if index > lastindex:
+                lastindex = index
+
+
+            if False and int( message['smstat']) == 0:
+                # unread message, acknowledge it
+                #XXX: could we ack all in 1 request ?
+                print "acknowledge message ..."
+                print e3372.sms_set_read( index);
 
     #print e3372.send_sms( phone, "fin transaction!", lastindex+1)
     #print e3372.sms_delete_sms( [index])
