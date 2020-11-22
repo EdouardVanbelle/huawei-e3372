@@ -6,44 +6,31 @@ import sys
 import pprint
 import requests
 import xmltodict
+import re
+
 from xml.sax.saxutils import escape
 from datetime import datetime
+from enum import IntEnum
 
-'''
-Try Reverse Eng:
+# FIXME: need to dig into UTF8 and unicode problems :)
 
-    smstat:
-        4 errorSent
-        3 sent
-        2 draft
-        1 received
-        0 unread
 
-    curbox:
-        0 incoming
-        1 outgoing
+def norm_phone( phone):
+    ''' normalize phone number to international form '''
+       
+    # FIXME: suppose that we are in France: +33, should use better mapping
 
-    savetype:
-        3 sent
-        0 received
+    if re.match( '^\+', phone):
+        return phone
 
-    smstype
-        1 simple (less than 160 chars)
-        2 aggregated (more than 160 chars)
-        4 5 6: multiusers (MMS: case not managed by this device)
-        7: smsreport (success) ? ?
-        8: smsreport (failed)
-        9: alert ?
-        10: info ?
+    if re.match( '^00', phone):
+        return '+'+phone[2:]
 
-     ConnectionStatus:
-       900: connecting
-       901: connected
-       902: disconnected
-       903: disconnecting
-       ...
-
-'''
+    if re.match( '^0[^0]', phone):
+        return '+33'+phone[1:]
+   
+    #XXX: should not occurs, keep current format but should raise an exception
+    return phone
 
 class HuaweiE3372(object):
     BASE_URL = 'http://{host}'
@@ -84,15 +71,27 @@ class HuaweiE3372(object):
         # Don't check content-type as it is always a text/html event for pure XML answer
         # print "content: "+response.headers.get('content-type')
 
-        xml = response.text
+        xml = response.content
 
         # ensure we have a XML answer
         if not xml.startswith( "<?xml", 0, 5):
             raise Exception( "This is not a XML answer")
 
+        #DEBUG print xml
+
         data = xmltodict.parse( xml)
 
         if "error" in data:
+
+            '''
+            format: 
+              <error>
+                <code>113055</code>
+                <message></message>
+              </error>
+            '''
+
+
             code    = int( data['error']['code'])
             message = data['error']['message']
 
@@ -102,20 +101,15 @@ class HuaweiE3372(object):
             elif code == 100005:
                 #FIXME should use correct exception
                 raise Exception( code, "missing argument")
+            elif code == 125003:
+                # invalid token
+                raise Exception( code, "invalid token")
             else:
                 # unknown case
                 raise Exception( code, message)
 
         if not "response" in data:
             raise Exception("parse exception")
-
-        '''
-        format: 
-        <error>
-        <code>113055</code>
-        <message></message>
-        </error>
-        '''
 
         return data.get("response", None)
 
@@ -142,7 +136,11 @@ class HuaweiE3372(object):
         if len( self.tokens) == 0:
             self.__get_token()
 
-        token = self.tokens.pop()
+        # take the oldest token (first in list)
+        token = self.tokens.pop(0)
+
+        if isinstance( payload, unicode):
+            payload = payload.encode( 'utf-8')
 
         #DEBUG print "using token "+token
         #DEBUG print "sending : "+payload
@@ -151,7 +149,9 @@ class HuaweiE3372(object):
         return self.__api_decode( self.session.request( 
             'POST', 
             self.base_url + path,
-            headers = { '__RequestVerificationToken' : token },
+            headers = { 
+                '__RequestVerificationToken' : token,
+                'content-type': 'text/xml; charset=utf-8'},
             data = payload
         ))
 
@@ -338,11 +338,13 @@ class HuaweiE3372(object):
 
         return self.__get( '/api/sms/sms-count')
 
-    def send_sms(self, phone, message, index=0):
+    def send_sms(self, phone, message, index=-1, date=None):
         """Send a sms to a given phone
         """
 
-        now = datetime.now()
+        if date == None:
+            date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         # FIXME: do we need better way to generate XML ?
         # FIXME: do we need to find correct index ?
         payload = (
@@ -353,7 +355,7 @@ class HuaweiE3372(object):
                 '<Content>'+escape(message)+'</Content>'
                 '<Length>'+str( len( message))+'</Length>'
                 '<Reserved>1</Reserved>'
-                '<Date>'+now.strftime('%Y-%m-%d %H:%M:%S')+'</Date>'
+                '<Date>'+date+'</Date>'
             '</request>'
         )
 
@@ -557,16 +559,229 @@ class HuaweiE3372(object):
         '''
         return self.__post( '/api/device/control', '<?xml version: "1.0" encoding="UTF-8"?><request><Control>1</Control></request>')
 
+# ----------------------------------------------------------------------------------------------
+
+'''
+Try Reverse Eng:
+
+    curbox:
+        0 incoming
+        1 outgoing
+
+    savetype:
+        3 sent
+        0 received
+
+     ConnectionStatus:
+       900: connecting
+       901: connected
+       902: disconnected
+       903: disconnecting
+       ...
+
+'''
 
 
+class SmsType(IntEnum):
+    Simple          = 1 # classic SMS
+    Aggregated      = 2 # more than 160 chars
+    MMS4            = 4 # MMS (unmanaged case) 
+    MMS5            = 5 # MMS (unmanaged case)
+    MMS6            = 6 # MMS (unmanaged case)
+    ReportSuccess   = 7
+    ReportFailed    = 8
+    Alert           = 9
+    Info            = 10
+
+
+class SmsStatus(IntEnum):
+    ReceivedUnseen = 0
+    ReceivedSeen   = 1
+    Draft          = 2
+    SentOk         = 3
+    SentError      = 4
+
+
+class Message(object):
+
+
+    def __init__( self, raw, contact=None):
+        ''' constructor
+
+        from Contact (last message):
+            #OrderedDict([(u'smstat', u'4'), (u'index', u'40020'), (u'phone', u'+3317821445'), (u'content', u"j'arrive"), (u'date', u'2020-11-21 21:52:02'), (u'sca', None), (u'savetype', u'3'), (u'priority', u'4'), (u'smstype', u'1'), (u'unreadcount', u'0')])
+        from Messages:
+            #OrderedDict([(u'smstat', u'4'), (u'index', u'40020'), (u'phone', u'+3317821445'), (u'content', u"j'arrive"), (u'date', u'2020-11-21 21:52:02'), (u'sca', None), (u'savetype', u'3'), (u'priority', u'4'), (u'smstype', u'1'), (u'curbox', u'2'), 
+        '''
+
+        self.contact  = contact
+        self.id       = int( raw['index'])
+        self.phone    = norm_phone( raw['phone'])
+        self.content  = raw['content']
+        self.date     = raw['date']
+        self.status   = SmsStatus( int( raw['smstat']))
+        self.type     = SmsType( int( raw['smstype']))
+        self.priority = int( raw['priority'])
+        self.savetype = int( raw['savetype'])
+
+        # XXX: unreadcount and curbox are not relevant 
+
+        #if self.content != None:
+        #    self.content = self.content.encode('utf8')
+
+        if self.status == SmsStatus.ReceivedUnseen or self.status == SmsStatus.ReceivedSeen:
+            self.dir = u"incoming" 
+        elif self.status == SmsStatus.SentError:
+            self.dir = u"out-err " 
+        elif self.status == SmsStatus.Draft:
+            self.dir = u"draft   " 
+        else:
+            self.dir = u"outgoing"
+
+        self.unread    = (self.status == SmsStatus.ReceivedUnseen)
+        self.canResend = (self.status == SmsStatus.SentError or self.status == SmsStatus.Draft)
+
+        if contact != None:
+            contact.append( self)
+
+
+    def __unicode__( self):
+        new="-"
+
+        if self.status == SmsStatus.ReceivedSeen:
+            new="r"
+        elif self.status == SmsStatus.ReceivedUnseen:
+            new="N"
+        elif self.status == SmsStatus.SentError:
+            new='!'
+
+        return u"Message #{number} {direction} [{new}] with {phone} at {date} ({status} {_type}): {content}".format( 
+                number=self.id, new=new, direction=self.dir, phone=self.phone, date=self.date, content=self.content, status=str( self.status), _type=str( self.type)
+        )
+
+    def __str__( self):
+        return unicode( self).encode('utf-8')
+
+    def __repr__( self):
+        return u"<Message id:{number} unread:{unread} dir:{direction} phone:{phone} date:{date} status:{status} content:{content}>".format( 
+                    number=self.id, unread=self.unread, direction=self.dir, phone=self.phone, date=self.date, content=self.content, status=self.status
+        )
+
+
+    def ack( self):
+
+        #FIXME: what if contact is not defined
+        #FIXME: what if driver is not defined in contact
+        driver = self.contact.driver
+
+        try:
+            driver.sms_set_read( self.id)
+            self.unread = False 
+
+        except:
+            raise
+
+    def drop( self):
+        driver = self.contact.driver
+
+        try:
+            driver.sms_delete_sms( [ self.id])
+            self.contact.remove( self)
+        except:
+            raise
+
+    def resend( self):
+        driver = self.contact.driver
+
+        try:
+            #XXX: do we need to keep use same date ?
+            driver.send_sms( self.phone, self.content, index=self.id)
+        except:
+            # FIXME: need to understant error 113004 (§but message sucessfully sent)
+            raise
+
+
+       
+
+class Contact(object):
+
+    def __init__( self, phone, count=0, driver=None):
+        self.driver = driver
+        self.phone  = phone
+        self.count  = count
+        self.messages = {}
+
+    def __unicode__(self):
+        return u"Contact {phone} (msg: {count})".format( phone=self.phone, count=self.count)
+
+    def __str__( self):
+        return unicode( self).encode('utf-8')
+
+    def __repr__(self):
+        return u"<Contact phone:{phone} count:{count}>".format( phone=self.phone, count=self.count)
+
+    def send( self, message):
+        #FIXME: could get new
+        #XXX driver must be set
+        self.driver.send_sms( self.phone, message)
+
+    def append( self, message, overwrite=False):
+
+        if not overwrite and message.id in self.messages:
+            return False
+
+        message.contact = self
+        self.messages[message.id] = message
+        #self.messages.append( message)
+
+        return True
+
+    def remove( self, message):
+
+        index=message
+        if isinstance( message, Message):
+            index=message.id
+
+        self.messages.pop( index, None)
+        #self.messages.remove( message)
+
+    def exists( self, message):
+
+        index=message
+        if isinstance( message, Message):
+            index=message.id
+
+        return index in self.messages
+
+
+    def sorted( self):
+        '''get messages sorted by date'''
+        return iter( sorted( self.messages, key=lambda index : self.messages[index].date))
+
+    def drop( self):
+        driver = self.driver
+
+        try:
+            driver.sms_delete_phone( [ self.phone ])
+        except:
+            raise
+ 
 # -------------------------------------------------------------------------------------------------------
 
+PAGINATION=22
+
 def main():
+
+    # TODO: unit test :)
+#    print norm_phone( "0123456789")
+#    print norm_phone( "0033123456789")
+#    print norm_phone( "+33123456789")
+#    print norm_phone( "9123456789")
 
 
     e3372 = HuaweiE3372()
 
-    print "device phone number: "+e3372.get_phone();
+    print u"device phone number: "+e3372.get_phone();
 
     #print e3372.traffic_statistics()
     #print e3372.get_provider()
@@ -587,44 +802,93 @@ def main():
     #print e3372.switch_modem( )
 
     print e3372.check_notifications()
+
     print e3372.sms_count()
-    print e3372.sms_count_contact()
 
-    contacts = e3372.sms_list_contact()
-
-    lastindex = 0
-
-    for contact in contacts:
+    print "Total contacts: {count}".format( count = e3372.sms_count_contact())
 
 
-        #print "From: "+contact["phone"]+" message: "+contact["content"]
 
-        # get first phone in contact
-        phone = contact["phone"]
+    contact_index=1
+    while True:
 
-        print "--------------- "+phone+" has "+str( e3372.sms_count_contact( phone))+" messages "
-
-        print contact
-
-        messages = e3372.sms_list_phone(  phone)
-        for message in messages:
-            print "message:"
-            print message
-            index = int( message['index'])
-
-            if index > lastindex:
-                lastindex = index
+        contacts = e3372.sms_list_contact( index=contact_index, count=PAGINATION)
 
 
-            if False and int( message['smstat']) == 0:
-                # unread message, acknowledge it
-                #XXX: could we ack all in 1 request ?
-                print "acknowledge message ..."
-                print e3372.sms_set_read( index);
+        for raw_contact in contacts:
 
-    #print e3372.send_sms( phone, "fin transaction!", lastindex+1)
+            print 
+
+            if raw_contact['phone'] == None:
+                print "got a dirty entry, try to purge it"
+                print raw_contact
+
+                if raw_contact['index'] != 0:
+                    try:
+                        print e3372.sms_delete_sms( [raw_contact['index']])
+                    except: 
+                        print "Unable to purge entry"
+
+                continue
+
+            # get first phone in contact
+            phone=raw_contact["phone"]
+            contact = Contact( phone, count=e3372.sms_count_contact( phone), driver=e3372)
+
+            print contact
+
+            message_index=1
+            while True:
+
+                messages = e3372.sms_list_phone(  phone, index=message_index, count=PAGINATION)
+
+                for raw_message in messages:
+
+                    message = Message( raw_message)
+                    if not contact.append( message):
+                        continue
+
+
+                if len( messages) < PAGINATION:
+                    # no more messages
+                    break
+
+                message_index += 1
+
+                if message_index > 100:
+                    raise Exception("Too much iterations, please check system")
+
+
+            # now we have all message for a given contact, print them, sorted by date
+
+            for index in contact.sorted():
+
+                message = contact.messages[index]
+                print message
+
+
+            #if False and  contact.phone == "+33123456789":
+            #    #print "delete first message"
+            #    #contact.messages[0].drop() 
+
+            #    print "send a new message (with mix of alphabet)"
+            #    contact.send( u"Hello you ! ça marche éhéhé ! صباح الخير 😀")
+
+
+        if len(contacts) < PAGINATION:
+            # no more contacts
+            break
+
+        contact_index += 1
+
+        if contact_index > 100:
+            raise Exception("Too much iterations, please check system")
+
+
+    #print e3372.send_sms( phone, "fin transaction!")
     #print e3372.sms_delete_sms( [index])
     #print e3372.sms_delete_phone( [1, 2])
+
 
 if __name__ == "__main__":
     main()
