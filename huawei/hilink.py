@@ -43,6 +43,16 @@ Try Reverse Eng:
        903: disconnecting
        ...
 
+    NetworkType:
+        0 = 'No Service'
+        1 = 'GSM'
+        2 = 'GPRS (2.5G)'
+        3 = 'EDGE (2.75G)'
+        4 = 'WCDMA (3G)'
+        9 = 'HSPA+ (4G)'
+
+
+
 '''
 
 
@@ -151,6 +161,9 @@ class HuaweiE3372(object):
 
         return self.__api_decode( self.session.get( self.base_url + path))
 
+    def get(self, path):
+        return self.__get( path)
+
     def __get_token(self):
         data=self.__get( "/api/webserver/token")
 
@@ -203,6 +216,8 @@ class HuaweiE3372(object):
         )
 
         return self.__post_raw( path, payload)
+
+    # -------------------------------------------------- device
 
     def device_information( self):
         '''get device information
@@ -296,6 +311,17 @@ class HuaweiE3372(object):
         '''
         return self.__get('/api/device/signal')
 
+    def device_reboot( self):
+        '''reboot device
+
+        beware: you will have to if up usb ethernet if your host is not configured to do it automatically...
+
+        '''
+        return self.__post_request( '/api/device/control', { 'Control': 1 })
+
+
+    # -------------------------------------------------- monitoring
+
     def monitoring_statistics( self):
         '''return statistics
 
@@ -313,8 +339,24 @@ class HuaweiE3372(object):
 
         return self.__get( "/api/monitoring/traffic-statistics")
 
-    def monitoring_status():
+    def monitoring_status( self):
+
         return self.__get( "/api/monitoring/status")
+
+    def monitoring_check_notifications( self):
+        '''Check for notifications
+
+        return dict:
+            UnreadMessage
+            SmsStorageFull
+            OnlineUpdateStatus
+            SimOperEvent
+        '''
+
+        # FIXME: should map response
+        return self.__get( '/api/monitoring/check-notifications')
+
+    # -------------------------------------------------- net
 
     def net_provider( self):
         ''' get provider name
@@ -329,21 +371,7 @@ class HuaweiE3372(object):
         '''
         return self.__get('/api/net/current-plmn');
 
-    def get(self, path):
-        return self.__get( path)
-
-    def monitoring_check_notifications( self):
-        '''Check for notifications
-
-        return dict:
-            UnreadMessage
-            SmsStorageFull
-            OnlineUpdateStatus
-            SimOperEvent
-        '''
-
-        # FIXME: should map response
-        return self.__get( '/api/monitoring/check-notifications')
+    # -------------------------------------------------- sms
 
     def sms_count( self):
         '''Sms count
@@ -583,7 +611,9 @@ class HuaweiE3372(object):
 
         return self.__post_request( "/api/sms/sms-delete-phone", { 'Phones' : phone } )
 
-    def switch_modem(self, state=None):
+    # -------------------------------------------------- dialup
+
+    def dialup_switch_modem(self, state=None):
         '''Read or Activate data modem
         '''
 
@@ -610,14 +640,6 @@ class HuaweiE3372(object):
             ('pdp_always_on', u'0')
         '''
         return self.__get( "/api/dialup/connection")
-
-    def device_reboot( self):
-        '''reboot device
-
-        beware: you will have to if up usb ethernet if your host is not configured to do it automatically...
-
-        '''
-        return self.__post_request( '/api/device/control', { 'Control': 1 })
 
 # ----------------------------------------------------------------------------------------------
 

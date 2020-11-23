@@ -140,13 +140,13 @@ def main():
     parser_device.add_argument('action', choices=['information','signal', 'reboot'], help='information')
 
     parser_monitoring = subparser_section.add_parser('monitoring', help='monitoring operation (--help for details)')
-    parser_monitoring.add_argument('action', choices=[ 'status', 'notifications' ], help='net informations')
+    parser_monitoring.add_argument('action', choices=[ 'statistics', 'status', 'notifications' ], help='net informations')
 
     parser_net = subparser_section.add_parser('net', help='net operation (--help for details)')
     parser_net.add_argument('action', choices=[ 'statistics', 'provider' ], help='net informations')
 
     parser_modem = subparser_section.add_parser('modem', help='modem actions (--help for details)')
-    parser_modem.add_argument('action', choices=['status', 'on', 'off'], help="status, on, off")
+    parser_modem.add_argument('action', choices=['status', 'on', 'off', 'connection'], help="status, on, off")
 
     parser_sms = subparser_section.add_parser('sms', help='sms actions (--help for details)')
     parser_sms_action        = parser_sms.add_subparsers(dest='action', help='action name', title="section command")
@@ -192,13 +192,16 @@ def main():
         if args['section'] == 'modem':
 
             if args['action'] == 'status':
-                render( e3372.switch_modem( ))
+                render( e3372.dialup_switch_modem( ))
 
             elif args ['action'] == 'on':
-                render( e3372.switch_modem( True))
+                render( e3372.dialup_switch_modem( True))
 
             elif args ['action'] == 'off':
-                render( e3372.switch_modem( False))
+                render( e3372.dialup_switch_modem( False))
+    
+            elif args ['action'] == 'connection':
+                render( e3372.dialup_connection( ))
 
         elif args['section'] == 'net':
 
@@ -215,10 +218,21 @@ def main():
                 render( e3372.device_information())
 
             elif args['action'] == 'signal':
-                render( e3372.device_signal().items())
+                render( e3372.device_signal())
 
             elif args ['action'] == 'reboot':
                 render( e3372.device_reboot())
+
+        elif args['section'] == 'monitoring':
+
+            if args['action'] == 'status':
+                render( e3372.monitoring_status())
+
+            elif args['action'] == 'notifications':
+                render( e3372.monitoring_check_notifications())
+
+            elif args['action'] == 'statistics':
+                render( e3372.monitoring_statistics())
 
         elif args['section'] == 'sms':
 
