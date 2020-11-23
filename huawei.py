@@ -34,6 +34,9 @@ def norm_phone( phone):
     #XXX: should not occurs, keep current format but should raise an exception
     return phone
 
+class ResponseException(Exception):
+    pass
+
 class HuaweiE3372(object):
     BASE_URL = 'http://{host}'
     COOKIE_URL = '/html/index.html'
@@ -95,22 +98,24 @@ class HuaweiE3372(object):
             code    = int( data['error']['code'])
             message = data['error']['message']
 
-            if code == 100010:
-                #FIXME should use better exception
-                raise Exception( code, "object not found")
+            #FIXME should use better exception
+            if code == 100002:
+                raise ResponseException( code, "resource not found")
+            elif code == 100010:
+                raise ResponseException( code, "object not found")
             elif code == 100005:
                 #FIXME should use correct exception
-                raise Exception( code, "missing argument")
+                raise ResponseException( code, "missing argument")
             elif code == 125003:
                 # invalid token
-                raise Exception( code, "invalid token")
+                raise ResponseException( code, "invalid token")
             elif code == 113055: 
-                raise Exception( code, "sms already changed")
+                raise ResponseException( code, "sms already changed")
             elif code == 113114:
-                raise Exception( code, "sms not found")
+                raise ResponseException( code, "sms not found")
             else:
                 # unknown case
-                raise Exception( code, message)
+                raise ResponseException( code, message)
 
         if not "response" in data:
             raise Exception("parse exception")
@@ -955,74 +960,83 @@ def main():
     parser_sms_action_cdel   = parser_sms_action.add_parser( 'cdel', help="contact delete (and associated messages)")
     parser_sms_action_cdel.add_argument( "--phone", required=True)
 
+    parser_api = subparser_section.add_parser('api', help='helper call directly API')
+    parser_api.add_argument('--path', required=True)
+
 
     args = vars( parser.parse_args())
 
     # FIXME: choose correct renderer according choice
     render = human_renderer
 
-    e3372 = HuaweiE3372( host=args['host'])
+    try:
+
+        e3372 = HuaweiE3372( host=args['host'])
 
 
-    if args['section'] == 'modem':
+        if args['section'] == 'modem':
 
-        if args['action'] == 'status':
-            render( e3372.switch_modem( ))
+            if args['action'] == 'status':
+                render( e3372.switch_modem( ))
 
-        elif args ['action'] == 'on':
-            render( e3372.switch_modem( True))
+            elif args ['action'] == 'on':
+                render( e3372.switch_modem( True))
 
-        elif args ['action'] == 'off':
-            render( e3372.switch_modem( False))
+            elif args ['action'] == 'off':
+                render( e3372.switch_modem( False))
 
-    elif args['section'] == 'net':
+        elif args['section'] == 'net':
 
-        if args['action'] == 'statistics':
-            render( e3372.net_statistics())
+            if args['action'] == 'statistics':
+                render( e3372.net_statistics())
 
-        elif args['action'] == 'provider':
-            render( e3372.net_provider())
+            elif args['action'] == 'provider':
+                render( e3372.net_provider())
 
-  
-    elif args['section'] == 'device':
-
-        if args['action'] == 'information':
-            render( e3372.device_information())
-
-        elif args['action'] == 'signal':
-            render( e3372.device_signal().items())
-
-        elif args ['action'] == 'reboot':
-            render( e3372.device_reboot())
-
-    elif args['section'] == 'sms':
-
-        if args['action'] == 'status':
-            render( e3372.sms_count())
-
-        elif args['action'] == 'send':
-            render( e3372.send_sms( args['phone'], args['message']))
-
-        elif args['action'] == 'list':
-            render( e3372.get_sms_list())
-
-        elif args['action'] == 'browse':
-            browse( e3372) 
-
-        elif args['action'] == 'mack':
-            render( e3372.sms_set_read( args['id']))
-
-        elif args['action'] == 'mdel':
-            render( e3372.sms_delete_sms( args['id']))
-
-        elif args['action'] == 'cdel':
-            render( e3372.sms_delete_phone( args['phone']))
       
-    else:
+        elif args['section'] == 'device':
 
-        print "work in progress..."
-        return
+            if args['action'] == 'information':
+                render( e3372.device_information())
 
+            elif args['action'] == 'signal':
+                render( e3372.device_signal().items())
+
+            elif args ['action'] == 'reboot':
+                render( e3372.device_reboot())
+
+        elif args['section'] == 'sms':
+
+            if args['action'] == 'status':
+                render( e3372.sms_count())
+
+            elif args['action'] == 'send':
+                render( e3372.send_sms( args['phone'], args['message']))
+
+            elif args['action'] == 'list':
+                render( e3372.get_sms_list())
+
+            elif args['action'] == 'browse':
+                browse( e3372) 
+
+            elif args['action'] == 'mack':
+                render( e3372.sms_set_read( args['id']))
+
+            elif args['action'] == 'mdel':
+                render( e3372.sms_delete_sms( args['id']))
+
+            elif args['action'] == 'cdel':
+                render( e3372.sms_delete_phone( args['phone']))
+          
+        elif args['section'] == 'api':
+            render( e3372.get( args['path']))
+
+        else:
+            print "work in progress..."
+            return
+
+    except ResponseException as e:
+        print e
 
 if __name__ == "__main__":
     main()
