@@ -305,11 +305,11 @@ def main():
         elif args['section'] == 'api':
             # ensure path starts with /api
             path = args['path']
-            if path[1] != "/":
+            if path[0] != "/":
                 path = "/"+path
             if path[:4] != "/api":
                 path = "/api"+path
-            render( e3372.get( args['path']))
+            render( e3372.get( path))
 
         else:
             print "work in progress..."
