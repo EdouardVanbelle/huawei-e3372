@@ -41,7 +41,9 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
 ```
+
 $ ./huawei.py device information
+```
 DeviceName: E3372h-320
 SerialNumber: VQND.....
 Imei: 8......
