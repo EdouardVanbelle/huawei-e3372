@@ -176,7 +176,7 @@ def main():
     parser_sms_action_cdel   = parser_sms_action.add_parser( 'del-contact', help="delete a contact (and associated messages)")
     parser_sms_action_cdel.add_argument( "--phone", required=True)
 
-    parser_api = subparser_section.add_parser('api', help='helper call directly API')
+    parser_api = subparser_section.add_parser('api', help='helper, direct API call (GET only)'))
     parser_api.add_argument('--path', required=True)
 
 

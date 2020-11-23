@@ -44,7 +44,8 @@ section command:
     net                 net operation (--help for details)
     modem               modem actions (--help for details)
     sms                 sms actions (--help for details)
-    api                 helper call directly API
+    api                 direct API call (GET only)
+
 ```
 
 $ ./huawei.py sms --help
@@ -195,4 +196,22 @@ $ ./huawei.py modem status
 ```
 True
 ```
+
+### request a direct API call (GET with a specified path)
+
+$ ./huawei.py api --path dhcp/settings
+```
+DnsStatus: 1
+DhcpStartIPAddress: 192.168.8.100
+DhcpIPAddress: 192.168.8.1
+accessipaddress: None
+homeurl: hi.link
+DhcpStatus: 1
+DhcpLanNetmask: 255.255.255.0
+SecondaryDns: 192.168.8.1
+PrimaryDns: 192.168.8.1
+DhcpEndIPAddress: 192.168.8.200
+DhcpLeaseTime: 86400
+```
+
 
