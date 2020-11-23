@@ -2,6 +2,7 @@
 
 Inspired from: https://github.com/arska/e3372
 
+## API 
 Sample of use:
 
 ```python
@@ -19,7 +20,9 @@ e3372.send_sms( '+33....', 'Hello world')
 ```
 
 
-# Command line help
+## CLI tool
+
+### help
 
 $ ./huawei.py --help
 ```
@@ -77,7 +80,7 @@ optional arguments:
               inbox 6:sim-sent 7:sim-draft 8:sim-trash
 ```
 
-# read device information
+### read device information
 
 $ ./huawei.py device information
 ```
@@ -110,12 +113,14 @@ spreadname_zh: None
 ```
 
 Send a message to +33...
+
 $ ./huawei.py sms send --phone '+33...' --message 'Hello you !'
 ```
 OK
 ```
 
 Get all contacts and messages
+
 $ ./huawei.py sms browse
 ```
 device phone number: +33...
@@ -156,6 +161,7 @@ Message #40005 incoming [r] with Free Mobile at 2020-11-20 11:13:48 (SmsStatus.R
 ```
 
 Acknowledge a message
+
 $ ./huawei.py sms ack-message --id 40023
 ```
 OK
@@ -167,21 +173,24 @@ $ ./huawei.py sms del-message --id 40004
 OK
 ```
 
-# modem sample (network connectivity)
+### modem sample (network connectivity)
 
 Is internet active (Data) ?
+
 $ ./huawei.py modem status
 ```
 False
 ```
 
 Activate data 
+
 $ ./huawei.py modem on
 ```
 OK
 ```
 
 Is internet active (Data) ?
+
 $ ./huawei.py modem status
 ```
 True
