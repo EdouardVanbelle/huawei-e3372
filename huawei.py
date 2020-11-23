@@ -4,6 +4,7 @@
 
 import sys
 import pprint
+import json
 
 import argparse
 import logging
@@ -124,6 +125,9 @@ def flat_renderer( o, shift=""):
             o=o.encode( 'utf-8')
         print "{shift}{value}".format( shift=shift, value= o)
 
+def json_render( o):
+    print json.dumps( o)
+
 def main():
 
     logging.basicConfig()
@@ -186,6 +190,8 @@ def main():
 
     # FIXME: choose correct renderer according choice
     render = flat_renderer
+    if args["output"] == "json":
+        render = json_render
 
     try:
 
@@ -210,10 +216,7 @@ def main():
 
         elif args['section'] == 'net':
 
-            if args['action'] == 'statistics':
-                render( e3372.net_statistics())
-
-            elif args['action'] == 'provider':
+            if args['action'] == 'provider':
                 render( e3372.net_provider())
 
       
@@ -287,6 +290,7 @@ def main():
                 render( merged)
 
             elif args['action'] == 'browse':
+                #only case where json is not possible
                 browse( e3372) 
 
             elif args['action'] == 'ack-message':
