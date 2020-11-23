@@ -6,9 +6,11 @@ import sys
 import pprint
 import requests
 import xmltodict
+import dicttoxml
 import re
+import argparse
 
-from xml.sax.saxutils import escape
+from collections import OrderedDict
 from datetime import datetime
 from enum import IntEnum
 
@@ -40,7 +42,6 @@ class HuaweiE3372(object):
     # details also available on: https://blog.hqcodeshop.fi/archives/259-Huawei-E5186-AJAX-API.html
     XML_APIS = [
         '/api/device/basic_information',
-        '/api/monitoring/status',
         '/api/global/module-switch',
         '/api/net/net-mode',
     ]
@@ -51,7 +52,6 @@ class HuaweiE3372(object):
         self.base_url = self.BASE_URL.format(host=host)
         self.session = requests.Session()
         self.tokens = []
-        self.__device_information = None
         # get a session cookie by requesting the COOKIE_URL
         r = self.session.get(self.base_url + self.COOKIE_URL)
 
@@ -97,13 +97,17 @@ class HuaweiE3372(object):
 
             if code == 100010:
                 #FIXME should use better exception
-                raise FileNotFoundError()
+                raise Exception( code, "object not found")
             elif code == 100005:
                 #FIXME should use correct exception
                 raise Exception( code, "missing argument")
             elif code == 125003:
                 # invalid token
                 raise Exception( code, "invalid token")
+            elif code == 113055: 
+                raise Exception( code, "sms already changed")
+            elif code == 113114:
+                raise Exception( code, "sms not found")
             else:
                 # unknown case
                 raise Exception( code, message)
@@ -130,7 +134,10 @@ class HuaweiE3372(object):
         #DEBUG print "got token "+token
         self.tokens.append( token);
 
-    def __post( self, path, payload):
+    def __post_raw( self, 
+            path, 
+            payload
+        ):
 
         # get token only if necessary
         if len( self.tokens) == 0:
@@ -143,7 +150,7 @@ class HuaweiE3372(object):
             payload = payload.encode( 'utf-8')
 
         #DEBUG print "using token "+token
-        #DEBUG print "sending : "+payload
+        #DEBUG print "sending to {path}: {payload}".format( path=path, payload=payload)
 
         # XXX: do we need to force content ? Content-Type: application/x-www-form-urlencoded; charset=UTF-8;
         return self.__api_decode( self.session.request( 
@@ -154,6 +161,21 @@ class HuaweiE3372(object):
                 'content-type': 'text/xml; charset=utf-8'},
             data = payload
         ))
+
+    def __post_request( self, 
+            path,
+            data, 
+            item_func=lambda node: node[:-1] # ex: <Phones> will contains array of <Phone>
+        ):
+
+        payload = dicttoxml.dicttoxml( 
+            data, 
+            custom_root='request', 
+            attr_type=False, 
+            item_func=item_func
+        )
+
+        return self.__post_raw( path, payload)
 
     def device_information( self):
         '''get device information
@@ -187,11 +209,7 @@ class HuaweiE3372(object):
             'spreadname_zh', None
         '''
 
-        # cache data
-        if self.__device_information == None:
-            self.__device_information = self.__get('/api/device/information')
-
-        return self.__device_information
+        return self.__get('/api/device/information')
 
     def device_signal( self):
         ''' get device signal info
@@ -210,40 +228,40 @@ class HuaweiE3372(object):
                 more info: https://wiki.teltonika-networks.com/view/RSSI
 
             return values:
-                ('pci', u'1')
+                ('pci', '1')
                 ('sc', None)
-                ('cell_id', u'.....')
-                ('rsrq', u'-13.0dB')
-                ('rsrp', u'-106dBm')
-                ('rssi', u'-75dBm')
-                ('sinr', u'6dB')
+                ('cell_id', '.....')
+                ('rsrq', '-13.0dB')
+                ('rsrp', '-106dBm')
+                ('rssi', '-75dBm')
+                ('sinr', '6dB')
                 ('rscp', None)
                 ('ecio', None)
-                ('mode', u'7')
-                ('ulbandwidth', u'15MHz')
-                ('dlbandwidth', u'15MHz')
-                ('txpower', u'PPusch:22dBm PPucch:11dBm PSrs:22dBm PPrach:17dBm')
+                ('mode', '7')
+                ('ulbandwidth', '15MHz')
+                ('dlbandwidth', '15MHz')
+                ('txpower', 'PPusch:22dBm PPucch:11dBm PSrs:22dBm PPrach:17dBm')
                 ('tdd', None)
-                ('ul_mcs', u'mcsUpCarrier1:6')
-                ('dl_mcs', u'mcsDownCarrier1Code0:1 mcsDownCarrier1Code1:0')
-                ('earfcn', u'DL:1675 UL:19675')
+                ('ul_mcs', 'mcsUpCarrier1:6')
+                ('dl_mcs', 'mcsDownCarrier1Code0:1 mcsDownCarrier1Code1:0')
+                ('earfcn', 'DL:1675 UL:19675')
                 ('rrc_status', None)
                 ('rac', None)
                 ('lac', None)
-                ('tac', u'5902')
-                ('band', u'3')
-                ('nei_cellid', u'No1:1No2:62')
-                ('plmn', u'20815')
+                ('tac', '5902')
+                ('band', '3')
+                ('nei_cellid', 'No1:1No2:62')
+                ('plmn', '20815')
                 ('ims', None)
                 ('wdlfreq', None)
-                ('lteulfreq', u'17575')
-                ('ltedlfreq', u'18525')
+                ('lteulfreq', '17575')
+                ('ltedlfreq', '18525')
                 ('transmode', None)
-                ('enodeb_id', u'0407729')
-                ('cqi0', u'32639')
-                ('cqi1', u'32639')
-                ('ulfrequency', u'1757500kHz')
-                ('dlfrequency', u'1852500kHz')
+                ('enodeb_id', '0407729')
+                ('cqi0', '32639')
+                ('cqi1', '32639')
+                ('ulfrequency', '1757500kHz')
+                ('dlfrequency', '1852500kHz')
                 ('arfcn', None)
                 ('bsic', None)
                 ('rxlev', None)])
@@ -251,43 +269,43 @@ class HuaweiE3372(object):
         '''
         return self.__get('/api/device/signal')
 
-    def traffic_statistics( self):
+    def monitoring_statistics( self):
         '''return statistics
 
         values:
-            (u'CurrentConnectTime', u'2174')
-            (u'CurrentUpload', u'390')
-            (u'CurrentDownload', u'255')
-            (u'CurrentDownloadRate', u'0')
-            (u'CurrentUploadRate', u'0')
-            (u'TotalUpload', u'1800371')
-            (u'TotalDownload', u'687051')
-            (u'TotalConnectTime', u'612412')
-            (u'showtraffic', u'1')
+            ('CurrentConnectTime', '2174')
+            ('CurrentUpload', '390')
+            ('CurrentDownload', '255')
+            ('CurrentDownloadRate', '0')
+            ('CurrentUploadRate', '0')
+            ('TotalUpload', '1800371')
+            ('TotalDownload', '687051')
+            ('TotalConnectTime', '612412')
+            ('showtraffic', '1')
         '''
 
         return self.__get( "/api/monitoring/traffic-statistics")
 
-    def get_provider( self):
+    def monitoring_status():
+        return self.__get( "/api/monitoring/status")
+
+    def net_provider( self):
         ''' get provider name
 
         return:
-            (u'State', u'0')
-            (u'FullName', u'...')
-            (u'ShortName', u'...')
-            (u'Numeric', u'...')
-            (u'Rat', u'7')
-            (u'Spn', None)
+            ('State', '0')
+            ('FullName', '...')
+            ('ShortName', '...')
+            ('Numeric', '...')
+            ('Rat', '7')
+            ('Spn', None)
         '''
         return self.__get('/api/net/current-plmn');
-
-    def get_phone( self):
-        return self.device_information().get('Msisdn')
 
     def get(self, path):
         return self.__get( path)
 
-    def check_notifications( self):
+    def monitoring_check_notifications( self):
         '''Check for notifications
 
         return: {
@@ -296,7 +314,6 @@ class HuaweiE3372(object):
         }
 
         Debug:
-        <?xml version="1.0" encoding="UTF-8"?>
         <response>
         <UnreadMessage>1</UnreadMessage>
         <SmsStorageFull>0</SmsStorageFull>
@@ -318,7 +335,6 @@ class HuaweiE3372(object):
         '''Sms count
 
         Debug:
-        <?xml version="1.0" encoding="utf-8"?>
         <response>
                 <LocalUnread>1</LocalUnread>
                 <LocalInbox>4</LocalInbox>
@@ -342,30 +358,49 @@ class HuaweiE3372(object):
         """Send a sms to a given phone
         """
 
+        if not isinstance( phone, list):
+            phone = [ phone ]
+
         if date == None:
             date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # FIXME: do we need better way to generate XML ?
-        # FIXME: do we need to find correct index ?
-        payload = (
-            '<?xml version: "1.0" encoding="UTF-8"?>'+"\n"
-            '<request><Index>'+str( index)+'</Index>'
-                '<Phones><Phone>'+escape(phone)+'</Phone></Phones>'
-                '<Sca></Sca>'
-                '<Content>'+escape(message)+'</Content>'
-                '<Length>'+str( len( message))+'</Length>'
-                '<Reserved>1</Reserved>'
-                '<Date>'+date+'</Date>'
-            '</request>'
+        return self.__post_request( 
+            "/api/sms/send-sms", 
+            OrderedDict( [
+                ('Index',    index),
+                ('Phones',   phone),
+                ('Sca',      ""), # XXX: purpose ?
+                ('Content',  message),
+                ('Length',   len( message)),
+                ('Reserved', SmsCharset.EIGHT_BIT.value), 
+                ('Date',     date)
+            ])
         )
 
-        return self.__post( "/api/sms/send-sms", payload)
+    def get_sms_list(self,
+             page=1,
+             box_type=1, #BoxTypeEnum=BoxTypeEnum.LOCAL_INBOX,
+             read_count=20,
+             sort_type=0,
+             ascending=0,
+             unread_preferred=0
+        ):
+        return self.__post_request(
+            '/api/sms/sms-list',
+            OrderedDict([
+                ('PageIndex', page),
+                ('ReadCount', read_count),
+                ('BoxType', box_type),
+                ('SortType', sort_type),
+                ('Ascending', ascending),
+                ('UnreadPreferred', unread_preferred),
+            ])
+        )
 
     def sms_count_contact(self, phone=None):
         '''count messages for a given phone
 
         Debug:
-        <?xml version="1.0" encoding="utf-8"?>
         <response>
         <count>5</count>
         </response>
@@ -378,8 +413,7 @@ class HuaweiE3372(object):
             data = self.__get( "/api/sms/sms-count-contact")
 
         else:
-            payload='<?xml version: "1.0" encoding="UTF-8"?><request><phone>'+escape(phone)+'</phone></request>'
-            data = self.__post( '/api/sms/sms-count-contact', payload)
+            data = self.__post_request( '/api/sms/sms-count-contact', { 'phone' : phone })
 
         return int( data.get("count"))
 
@@ -387,7 +421,6 @@ class HuaweiE3372(object):
     def sms_list_contact( self, index=1, count=20):
         '''get all contacts with last message associated
 
-        <?xml version="1.0" encoding="utf-8"?>
         <response>
                 <Count>2</Count>
                 <messages>
@@ -419,8 +452,13 @@ class HuaweiE3372(object):
         </response>
         '''
 
-        payload = '<?xml version: "1.0" encoding="UTF-8"?><request><pageindex>'+str( index)+'</pageindex><readcount>'+str(count)+'</readcount></request>'
-        data = self.__post( "/api/sms/sms-list-contact", payload)
+        data = self.__post_request( 
+            "/api/sms/sms-list-contact", 
+            OrderedDict( [ 
+                ('pageindex', index), 
+                ('readcount', count)
+            ])
+        )
 
         # XXX check for pagination
         count = int( data.get("Count", None))
@@ -435,7 +473,6 @@ class HuaweiE3372(object):
 
     def sms_list_phone( self, phone, index=1, count=20):
         '''
-        <?xml version="1.0" encoding="UTF-8"?>
         <response>
         <count>13</count>
         <messages>
@@ -468,8 +505,14 @@ class HuaweiE3372(object):
         </response>
         '''
 
-        payload = '<?xml version: "1.0" encoding="UTF-8"?><request><phone>'+escape(phone)+'</phone><pageindex>'+str( index)+'</pageindex><readcount>'+str(count)+'</readcount></request>'
-        data = self.__post( "/api/sms/sms-list-phone", payload)
+        data = self.__post_request( 
+            "/api/sms/sms-list-phone", 
+            OrderedDict( [ 
+                ('phone',     phone), 
+                ('pageindex', index),
+                ('readcount', count)
+            ] )
+        )
 
         # XXX check for pagination
         count = int( data.get("count", None))
@@ -486,15 +529,13 @@ class HuaweiE3372(object):
         Input:
             index <int> the message to acknowledge
 
-        <?xml version="1.0" encoding="UTF-8"?><response>OK</response>
+        <response>OK</response>
         """
 
         if not isinstance( index, list):
             index = [ index ]
 
-        payload = '<?xml version: "1.0" encoding="UTF-8"?><request><Index>'+('</Index><Index>').join( map( lambda x : str(x), index))+'</Index></request>'
-
-        return self.__post( "/api/sms/set-read", payload)
+        return self.__post_request( "/api/sms/set-read", index, item_func=lambda node: 'Index')
 
 
     def sms_delete_sms( self, index):
@@ -505,23 +546,19 @@ class HuaweiE3372(object):
         if not isinstance( index, list):
             index = [ index ]
 
-        payload = '<?xml version: "1.0" encoding="UTF-8"?><request><Index>'+('</Index><Index>').join( map( lambda x : str(x), index))+'</Index></request>'
+        return self.__post_request( "/api/sms/delete-sms", index, item_func=lambda node: 'Index')
 
-        return self.__post( "/api/sms/delete-sms", payload)
 
     def sms_delete_phone( self, phone):
         """Delete one or multiple phones
 
-        <?xml version: "1.0" encoding="UTF-8"?><request><Phones><Phone>+33123456789</Phone></Phones></request>
+        <request><Phones><Phone>+33123456789</Phone></Phones></request>
         """
 
         if not isinstance( phone, list):
             phone = [ phone ]
 
-
-        payload = '<?xml version: "1.0" encoding="UTF-8"?><request><Phones><Phone>'+('</Phone><Phone>').join( map( lambda x : str(x), phone))+'</Phone></Phones></request>'
-
-        return self.__post( "/api/sms/sms-delete-phone", payload)
+        return self.__post_request( "/api/sms/sms-delete-phone", { 'Phones' : phone } )
 
     def switch_modem(self, state=None):
         '''Read or Activate data modem
@@ -532,10 +569,10 @@ class HuaweiE3372(object):
 
         if state:
             #activate modem (4g)
-            return self.__post( '/api/dialup/mobile-dataswitch', '<?xml version: "1.0" encoding="UTF-8"?><request><dataswitch>1</dataswitch></request>')
+            return self.__post_request( '/api/dialup/mobile-dataswitch', { 'dataswitch' : 1 } ) 
         else:
             #disable modem (4g)
-            return self.__post( '/api/dialup/mobile-dataswitch', '<?xml version: "1.0" encoding="UTF-8"?><request><dataswitch>0</dataswitch></request>')
+            return self.__post_request( '/api/dialup/mobile-dataswitch', { 'dataswitch' : 0 } ) 
 
 
     def dialup_connection( self):
@@ -551,13 +588,13 @@ class HuaweiE3372(object):
         '''
         return self.__get( "/api/dialup/connection")
 
-    def reboot( self):
+    def device_reboot( self):
         '''reboot device
 
         beware: you will have to if up usb ethernet if your host is not configured to do it automatically...
 
         '''
-        return self.__post( '/api/device/control', '<?xml version: "1.0" encoding="UTF-8"?><request><Control>1</Control></request>')
+        return self.__post_request( '/api/device/control', { 'Control': 1 })
 
 # ----------------------------------------------------------------------------------------------
 
@@ -601,6 +638,10 @@ class SmsStatus(IntEnum):
     SentOk         = 3
     SentError      = 4
 
+class SmsCharset(IntEnum):
+    UCS2 = 0
+    SEVEN_BIT = 1
+    EIGHT_BIT = 2
 
 class Message(object):
 
@@ -768,45 +809,15 @@ class Contact(object):
  
 # -------------------------------------------------------------------------------------------------------
 
-PAGINATION=22
+PAGINATION=20
 
-def main():
+def browse( e3372):
 
-    # TODO: unit test :)
-#    print norm_phone( "0123456789")
-#    print norm_phone( "0033123456789")
-#    print norm_phone( "+33123456789")
-#    print norm_phone( "9123456789")
+    print u"device phone number: "+e3372.device_information().get("Msisdn");
 
-
-    e3372 = HuaweiE3372()
-
-    print u"device phone number: "+e3372.get_phone();
-
-    #print e3372.traffic_statistics()
-    #print e3372.get_provider()
-    #print e3372.dialup_connection()
-    #print e3372.device_signal();
-
-    
-    #for path in e3372.XML_APIS:
-    #    print(path)
-    #    for key,value in e3372.get(path).items():
-    #      print(key,value)
-    #return
-
-
-    #print e3372.switch_modem( False)
-    #print e3372.switch_modem( )
-    #print e3372.switch_modem( True)
-    #print e3372.switch_modem( )
-
-    print e3372.check_notifications()
-
-    print e3372.sms_count()
+    print e3372.monitoring_check_notifications()
 
     print "Total contacts: {count}".format( count = e3372.sms_count_contact())
-
 
 
     contact_index=1
@@ -871,8 +882,6 @@ def main():
             #    #print "delete first message"
             #    #contact.messages[0].drop() 
 
-            #    print "send a new message (with mix of alphabet)"
-            #    contact.send( u"Hello you ! ça marche éhéhé ! صباح الخير 😀")
 
 
         if len(contacts) < PAGINATION:
@@ -885,9 +894,134 @@ def main():
             raise Exception("Too much iterations, please check system")
 
 
-    #print e3372.send_sms( phone, "fin transaction!")
-    #print e3372.sms_delete_sms( [index])
-    #print e3372.sms_delete_phone( [1, 2])
+# FIXME: enhance this code (currently crappy )
+def human_renderer( o, shift=""):
+    
+    if isinstance( o, dict):
+        for key, value in o.items():
+            if isinstance( value, dict) or isinstance( value, list):
+                print "{shift}{key}:".format( shift=shift, key=key)
+                human_renderer( value, "   "+shift)
+            else:
+                if isinstance(value, unicode):
+                    value=value.encode("utf-8")
+                print "{shift}{key}: {value}".format( shift=shift, key=key, value=value)
+
+    elif isinstance(o , list):
+        for elem in o:
+            human_renderer( elem, "  "+shift)
+    else:
+        if isinstance( o, unicode):
+            o=o.encode( 'utf-8')
+        print "{shift}{value}".format( shift=shift, value= o)
+
+def main():
+
+
+    parser = argparse.ArgumentParser() #prog='PROG')
+    #parser.add_argument('--foo', action='store_true', help='foo help')
+    parser.add_argument('--host', default="192.168.8.1", help="IP address to query (default: %(default)s)")
+    parser.add_argument('--output',  '-o', default="human", choices=['human', 'bash', 'json'], help="output format (default: %(default)s)")
+    subparser_section = parser.add_subparsers(dest='section', help='section name', title="section command")
+
+    parser_device = subparser_section.add_parser('device', help='device operations (--help for details)')
+    parser_device.add_argument('action', choices=['information','signal', 'reboot'], help='information')
+
+    parser_monitoring = subparser_section.add_parser('monitoring', help='monitoring operation (--help for details)')
+    parser_monitoring.add_argument('action', choices=[ 'status', 'notifications' ], help='net informations')
+
+    parser_net = subparser_section.add_parser('net', help='net operation (--help for details)')
+    parser_net.add_argument('action', choices=[ 'statistics', 'provider' ], help='net informations')
+
+    parser_modem = subparser_section.add_parser('modem', help='modem actions (--help for details)')
+    parser_modem.add_argument('action', choices=['status', 'on', 'off'], help="status, on, off")
+
+    parser_sms = subparser_section.add_parser('sms', help='sms actions (--help for details)')
+    parser_sms_action        = parser_sms.add_subparsers(dest='action', help='action name', title="section command")
+
+    parser_sms_action_send   = parser_sms_action.add_parser( 'send', help="send sms")
+    parser_sms_action_send.add_argument( "--phone", required=True)
+    parser_sms_action_send.add_argument( "--message", required=True)
+
+    parser_sms_action_browse = parser_sms_action.add_parser( 'browse', help="sms list")
+    parser_sms_action_list   = parser_sms_action.add_parser( 'list', help="sms browse")
+    parser_sms_action_status = parser_sms_action.add_parser( 'status', help="sms status")
+    parser_sms_action_mack   = parser_sms_action.add_parser( 'mack', help="message acknowledge")
+    parser_sms_action_mack.add_argument( "--id", required=True)
+
+    parser_sms_action_mdel   = parser_sms_action.add_parser( 'mdel', help="message delete")
+    parser_sms_action_mdel.add_argument( "--id", required=True)
+
+    parser_sms_action_cdel   = parser_sms_action.add_parser( 'cdel', help="contact delete (and associated messages)")
+    parser_sms_action_cdel.add_argument( "--phone", required=True)
+
+
+    args = vars( parser.parse_args())
+
+    # FIXME: choose correct renderer according choice
+    render = human_renderer
+
+    e3372 = HuaweiE3372( host=args['host'])
+
+
+    if args['section'] == 'modem':
+
+        if args['action'] == 'status':
+            render( e3372.switch_modem( ))
+
+        elif args ['action'] == 'on':
+            render( e3372.switch_modem( True))
+
+        elif args ['action'] == 'off':
+            render( e3372.switch_modem( False))
+
+    elif args['section'] == 'net':
+
+        if args['action'] == 'statistics':
+            render( e3372.net_statistics())
+
+        elif args['action'] == 'provider':
+            render( e3372.net_provider())
+
+  
+    elif args['section'] == 'device':
+
+        if args['action'] == 'information':
+            render( e3372.device_information())
+
+        elif args['action'] == 'signal':
+            render( e3372.device_signal().items())
+
+        elif args ['action'] == 'reboot':
+            render( e3372.device_reboot())
+
+    elif args['section'] == 'sms':
+
+        if args['action'] == 'status':
+            render( e3372.sms_count())
+
+        elif args['action'] == 'send':
+            render( e3372.send_sms( args['phone'], args['message']))
+
+        elif args['action'] == 'list':
+            render( e3372.get_sms_list())
+
+        elif args['action'] == 'browse':
+            browse( e3372) 
+
+        elif args['action'] == 'mack':
+            render( e3372.sms_set_read( args['id']))
+
+        elif args['action'] == 'mdel':
+            render( e3372.sms_delete_sms( args['id']))
+
+        elif args['action'] == 'cdel':
+            render( e3372.sms_delete_phone( args['phone']))
+      
+    else:
+
+        print "work in progress..."
+        return
 
 
 if __name__ == "__main__":
