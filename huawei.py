@@ -101,13 +101,13 @@ def browse( e3372):
 
 
 # FIXME: enhance this code (currently crappy )
-def human_renderer( o, shift=""):
+def flat_renderer( o, shift=""):
     
     if isinstance( o, dict):
         for key, value in o.items():
             if isinstance( value, dict) or isinstance( value, list):
                 print "{shift}{key}:".format( shift=shift, key=key)
-                human_renderer( value, "   "+shift)
+                flat_renderer( value, "   "+shift)
             else:
                 if isinstance(value, unicode):
                     value=value.encode("utf-8")
@@ -116,7 +116,7 @@ def human_renderer( o, shift=""):
 
     elif isinstance(o , list):
         for elem in o:
-            human_renderer( elem, "  "+shift)
+            flat_renderer( elem, "  "+shift)
         print 
 
     else:
@@ -129,10 +129,9 @@ def main():
     logging.basicConfig()
 
     parser = argparse.ArgumentParser() #prog='PROG')
-    #parser.add_argument('--foo', action='store_true', help='foo help')
     parser.add_argument('--host', default="192.168.8.1", help="IP address to query (default: %(default)s)")
-    parser.add_argument('--verbose', '-v', action="count", help="verbose mode")
-    parser.add_argument('--output',  '-o', default="human", choices=['human', 'bash', 'json'], help="output format (default: %(default)s)")
+    parser.add_argument('-v', '--verbose', action="count", help="verbose mode")
+    parser.add_argument('-o', '--output',  default="flat", choices=['flat', 'json'], help="output format (default: %(default)s)")
     subparser_section = parser.add_subparsers(dest='section', help='section name', title="section command")
 
     parser_device = subparser_section.add_parser('device', help='device operations (--help for details)')
@@ -150,22 +149,27 @@ def main():
     parser_sms = subparser_section.add_parser('sms', help='sms actions (--help for details)')
     parser_sms_action        = parser_sms.add_subparsers(dest='action', help='action name', title="section command")
 
+    parser_sms_action_status = parser_sms_action.add_parser( 'status', help="sms status (informations)")
     parser_sms_action_send   = parser_sms_action.add_parser( 'send', help="send sms")
     parser_sms_action_send.add_argument( "--phone", required=True)
     parser_sms_action_send.add_argument( "--message", required=True)
 
-    parser_sms_action_browse = parser_sms_action.add_parser( 'browse', help="sms list")
-    parser_sms_action_list   = parser_sms_action.add_parser( 'list', help="sms browse")
-    parser_sms_action_list .add_argument( "--box", default=1, type=int) 
+    parser_sms_action_browse = parser_sms_action.add_parser( 'browse', help="browse contacts and messages")
+    parser_sms_action_list   = parser_sms_action.add_parser( 'list', help="list message in a given box")
+    parser_sms_action_list .add_argument( "--box", default=1, type=int, help="1:local-inbox 2:local-sent 3:local-draft 4:local-trash 5:sim-inbox 6:sim-sent 7:sim-draft 8:sim-trash") 
 
-    parser_sms_action_status = parser_sms_action.add_parser( 'status', help="sms status")
-    parser_sms_action_mack   = parser_sms_action.add_parser( 'mack', help="message acknowledge")
+    parser_sms_action_contact  = parser_sms_action.add_parser( 'contact', help="get contacts and their last message")
+
+    parser_sms_action_contact_message   = parser_sms_action.add_parser( 'list-by-phone', help="list message for a given contact (phone)")
+    parser_sms_action_contact_message.add_argument( "--phone", required=True)
+
+    parser_sms_action_mack   = parser_sms_action.add_parser( 'ack-message', help="acknowledge a message")
     parser_sms_action_mack.add_argument( "--id", required=True)
 
-    parser_sms_action_mdel   = parser_sms_action.add_parser( 'mdel', help="message delete")
+    parser_sms_action_mdel   = parser_sms_action.add_parser( 'del-message', help="delete a message")
     parser_sms_action_mdel.add_argument( "--id", required=True)
 
-    parser_sms_action_cdel   = parser_sms_action.add_parser( 'cdel', help="contact delete (and associated messages)")
+    parser_sms_action_cdel   = parser_sms_action.add_parser( 'del-contact', help="delete a contact (and associated messages)")
     parser_sms_action_cdel.add_argument( "--phone", required=True)
 
     parser_api = subparser_section.add_parser('api', help='helper call directly API')
@@ -181,7 +185,7 @@ def main():
         huawei.hilink.setLogLevel( logging.DEBUG)
 
     # FIXME: choose correct renderer according choice
-    render = human_renderer
+    render = flat_renderer
 
     try:
 
@@ -243,30 +247,64 @@ def main():
             elif args['action'] == 'send':
                 render( e3372.send_sms( args['phone'], args['message']))
 
-            elif args['action'] == 'list':
+            elif args['action'] == 'contact':
                 index=1
+                merged=[]
                 while True:
-                    answer=e3372.sms_list( boxtype=args['box'], page=index, count=PAGINATION)
-                    render( answer)
+                    answer=e3372.sms_list_contact( page=index, count=PAGINATION)
+                    merged += answer
                     if len(answer) < PAGINATION:
                         break
                     index+=1
                     if index > 100:
                         raise Exception("Too much iterations, please check system")
+                render( merged)
+
+            elif args['action'] == 'list':
+                index=1
+                merged=[]
+                while True:
+                    answer=e3372.sms_list( boxtype=args['box'], page=index, count=PAGINATION)
+                    merged += answer
+                    if len(answer) < PAGINATION:
+                        break
+                    index+=1
+                    if index > 100:
+                        raise Exception("Too much iterations, please check system")
+                render( merged)
+
+            elif args['action'] == 'list-by-phone':
+                index=1
+                merged=[]
+                while True:
+                    answer=e3372.sms_list_phone(  args['phone'], page=index, count=PAGINATION)
+                    merged += answer
+                    if len(answer) < PAGINATION:
+                        break
+                    index+=1
+                    if index > 100:
+                        raise Exception("Too much iterations, please check system")
+                render( merged)
 
             elif args['action'] == 'browse':
                 browse( e3372) 
 
-            elif args['action'] == 'mack':
+            elif args['action'] == 'ack-message':
                 render( e3372.sms_set_read( args['id']))
 
-            elif args['action'] == 'mdel':
+            elif args['action'] == 'del-message':
                 render( e3372.sms_delete_sms( args['id']))
 
-            elif args['action'] == 'cdel':
+            elif args['action'] == 'del-contact':
                 render( e3372.sms_delete_phone( args['phone']))
           
         elif args['section'] == 'api':
+            # ensure path starts with /api
+            path = args['path']
+            if path[1] != "/":
+                path = "/"+path
+            if path[:4] != "/api":
+                path = "/api"+path
             render( e3372.get( args['path']))
 
         else:

@@ -1,23 +1,37 @@
 # Huawei E3372 API wrapper
 
-Current focus: sms API
-
 Inspired from: https://github.com/arska/e3372
+
+Sample of use:
+
+```python
+import pprint
+import huawei.hilink
+
+e3372 = huawei.hilink.HuaweiE3372()
+print "device phone number: "+e3372.device_information().get("Msisdn");
+print "Unread messages: "+e3372.monitoring_check_notifications().get("UnreadMessage")
+print "Total contacts: {count}".format( count = e3372.sms_count_contact())
+
+# send a sms
+e3372.send_sms( '+33....', 'Hello world')
+
+```
 
 
 # Command line help
 
 $ ./huawei.py --help
 ```
-usage: huawei.py [-h] [--host HOST] [--verbose] [--output {human,bash,json}]
+usage: huawei.py [-h] [--host HOST] [-v] [-o {flat,json}]
                  {device,monitoring,net,modem,sms,api} ...
 
 optional arguments:
   -h, --help            show this help message and exit
   --host HOST           IP address to query (default: 192.168.8.1)
-  --verbose, -v         verbose mode
-  --output {human,bash,json}, -o {human,bash,json}
-                        output format (default: human)
+  -v, --verbose         verbose mode
+  -o {flat,json}, --output {flat,json}
+                        output format (default: flat)
 
 section command:
   {device,monitoring,net,modem,sms,api}
@@ -30,16 +44,37 @@ section command:
     api                 helper call directly API
 ```
 
-$ ./huawei.py device --help
+$ ./huawei.py sms --help
 ```
-usage: huawei.py device [-h] {information,signal,reboot}
-
-positional arguments:
-  {information,signal,reboot}
-                        information
+usage: huawei.py sms [-h]
+                     {status,send,browse,list,contact,list-by-phone,ack-message,del-message,del-contact}
+                     ...
 
 optional arguments:
   -h, --help            show this help message and exit
+
+section command:
+  {status,send,browse,list,contact,list-by-phone,ack-message,del-message,del-contact}
+                        action name
+    status              sms status (informations)
+    send                send sms
+    browse              browse contacts and messages
+    list                list message in a given box
+    contact             get contacts and their last message
+    list-by-phone       list message for a given contact (phone)
+    ack-message         acknowledge a message
+    del-message         delete a message
+    del-contact         delete a contact (and associated messages)
+```
+
+$ ./huawei.py sms list --help
+```
+usage: huawei.py sms list [-h] [--box BOX]
+
+optional arguments:
+  -h, --help  show this help message and exit
+  --box BOX   1:local-inbox 2:local-sent 3:local-draft 4:local-trash 5:sim-
+              inbox 6:sim-sent 7:sim-draft 8:sim-trash
 ```
 
 # read device information
@@ -74,12 +109,13 @@ spreadname_en: None
 spreadname_zh: None
 ```
 
+Send a message to +33...
 $ ./huawei.py sms send --phone '+33...' --message 'Hello you !'
 ```
 OK
 ```
 
-
+Get all contacts and messages
 $ ./huawei.py sms browse
 ```
 device phone number: +33...
@@ -119,28 +155,33 @@ Contact Free Mobile (msg: 1)
 Message #40005 incoming [r] with Free Mobile at 2020-11-20 11:13:48 (SmsStatus.ReceivedSeen SmsType.Aggregated): INFO FREE : nos boutiques sont ouvertes et vous accueillent en toute sécurité. Pour éviter l'attente, prenez rendez-vous en ligne avec l'un de nos conseillers ! Plus d'infos ou prendre RDV sur bit.ly/Boutiques-Free .
 ```
 
-$ ./huawei.py sms mack --id 40023
+Acknowledge a message
+$ ./huawei.py sms ack-message --id 40023
 ```
 OK
 ```
 
-$ ./huawei.py sms mdel --id 40004
+Delete a message
+$ ./huawei.py sms del-message --id 40004
 ```
 OK
 ```
 
 # modem sample (network connectivity)
 
+Is internet active (Data) ?
 $ ./huawei.py modem status
 ```
 False
 ```
 
+Activate data 
 $ ./huawei.py modem on
 ```
 OK
 ```
 
+Is internet active (Data) ?
 $ ./huawei.py modem status
 ```
 True
