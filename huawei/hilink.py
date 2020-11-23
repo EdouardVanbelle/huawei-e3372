@@ -513,12 +513,12 @@ class HuaweiE3372(object):
         data = self.__post_request( 
             "/api/sms/sms-list-contact", 
             OrderedDict( [ 
-                ('pageindex', index), 
+                ('pageindex', page), 
                 ('readcount', count)
             ])
         )
 
-        if data.get("Messages") == None:
+        if data.get("messages") == None:
             return []
 
         messages = data.get("messages").get("message")
@@ -567,12 +567,12 @@ class HuaweiE3372(object):
             "/api/sms/sms-list-phone", 
             OrderedDict( [ 
                 ('phone',     phone), 
-                ('pageindex', index),
+                ('pageindex', page),
                 ('readcount', count)
             ] )
         )
 
-        if data.get("Messages") == None:
+        if data.get("messages") == None:
             return []
 
         messages = data.get("messages").get("message")
