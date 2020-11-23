@@ -113,10 +113,13 @@ def human_renderer( o, shift=""):
                 if isinstance(value, unicode):
                     value=value.encode("utf-8")
                 print "{shift}{key}: {value}".format( shift=shift, key=key, value=value)
+        print
 
     elif isinstance(o , list):
         for elem in o:
             human_renderer( elem, "  "+shift)
+        print 
+
     else:
         if isinstance( o, unicode):
             o=o.encode( 'utf-8')
@@ -182,6 +185,8 @@ def main():
     try:
 
         e3372 = huawei.hilink.HuaweiE3372( host=args['host'])
+
+        #FIXME: I trust that we can easily enhance code below...
 
 
         if args['section'] == 'modem':
