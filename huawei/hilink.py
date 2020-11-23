@@ -139,7 +139,7 @@ class HuaweiE3372(object):
             elif code == 100010:
                 raise ResponseException( code, "object not found")
             elif code == 100005:
-                raise ResponseException( code, "missing argument")
+                raise ResponseException( code, "missing or wrong argument")
             elif code == 125003:
                 raise ResponseException( code, "invalid token")
             elif code == 113055: 
@@ -440,12 +440,12 @@ class HuaweiE3372(object):
         return int( data.get("count"))
 
     def sms_list(self,
+             boxtype=1, 
              page=1,
-             box_type=1, #BoxTypeEnum=BoxTypeEnum.LOCAL_INBOX,
-             read_count=20,
-             sort_type=0,
+             count=20,
+             sorttype=0,
              ascending=0,
-             unread_preferred=0
+             unreadpreferred=0
         ):
         ''' list sms in a given box 
         '''
@@ -454,16 +454,20 @@ class HuaweiE3372(object):
         data = self.__post_request(
             '/api/sms/sms-list',
             OrderedDict([
-                ('PageIndex', page),
-                ('ReadCount', read_count),
-                ('BoxType', box_type),
-                ('SortType', sort_type),
-                ('Ascending', ascending),
-                ('UnreadPreferred', unread_preferred),
+                ('PageIndex',       page),
+                ('ReadCount',       count),
+                ('BoxType',         boxtype),
+                ('SortType',        sorttype),
+                ('Ascending',       ascending),
+                ('UnreadPreferred', unreadpreferred),
             ])
         )
 
         #beware uppercase here
+
+        if data.get("Messages") == None:
+            return []
+
         messages = data.get("Messages").get("Message")
 
         # normalize answer (always an array)
@@ -472,7 +476,7 @@ class HuaweiE3372(object):
 
         return messages
 
-    def sms_list_contact( self, index=1, count=20):
+    def sms_list_contact( self, page=1, count=20):
         '''get all contacts with last message associated
 
         <response>
@@ -514,6 +518,9 @@ class HuaweiE3372(object):
             ])
         )
 
+        if data.get("Messages") == None:
+            return []
+
         messages = data.get("messages").get("message")
 
         # normalize answer (always an array)
@@ -522,7 +529,7 @@ class HuaweiE3372(object):
 
         return messages
 
-    def sms_list_phone( self, phone, index=1, count=20):
+    def sms_list_phone( self, phone, page=1, count=20):
         '''
         <response>
         <count>13</count>
@@ -564,6 +571,9 @@ class HuaweiE3372(object):
                 ('readcount', count)
             ] )
         )
+
+        if data.get("Messages") == None:
+            return []
 
         messages = data.get("messages").get("message")
 

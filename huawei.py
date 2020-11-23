@@ -13,10 +13,10 @@ import huawei.hilinkHelper
 
 # FIXME: need to dig into UTF8 and unicode problems :)
 
+PAGINATION=20
 
 # -------------------------------------------------------------------------------------------------------
 
-PAGINATION=20
 
 def browse( e3372):
 
@@ -30,7 +30,7 @@ def browse( e3372):
     contact_index=1
     while True:
 
-        contacts = e3372.sms_list_contact( index=contact_index, count=PAGINATION)
+        contacts = e3372.sms_list_contact( page=contact_index, count=PAGINATION)
 
 
         for raw_contact in contacts:
@@ -58,13 +58,12 @@ def browse( e3372):
             message_index=1
             while True:
 
-                messages = e3372.sms_list_phone(  phone, index=message_index, count=PAGINATION)
+                messages = e3372.sms_list_phone(  phone, page=message_index, count=PAGINATION)
 
                 for raw_message in messages:
 
                     message = huawei.hilinkHelper.Message( raw_message)
-                    if not contact.append( message):
-                        continue
+                    contact.append( message)
 
 
                 if len( messages) < PAGINATION:
@@ -157,6 +156,8 @@ def main():
 
     parser_sms_action_browse = parser_sms_action.add_parser( 'browse', help="sms list")
     parser_sms_action_list   = parser_sms_action.add_parser( 'list', help="sms browse")
+    parser_sms_action_list .add_argument( "--box", default=1, type=int) 
+
     parser_sms_action_status = parser_sms_action.add_parser( 'status', help="sms status")
     parser_sms_action_mack   = parser_sms_action.add_parser( 'mack', help="message acknowledge")
     parser_sms_action_mack.add_argument( "--id", required=True)
@@ -243,7 +244,15 @@ def main():
                 render( e3372.send_sms( args['phone'], args['message']))
 
             elif args['action'] == 'list':
-                render( e3372.sms_list())
+                index=1
+                while True:
+                    answer=e3372.sms_list( boxtype=args['box'], page=index, count=PAGINATION)
+                    render( answer)
+                    if len(answer) < PAGINATION:
+                        break
+                    index+=1
+                    if index > 100:
+                        raise Exception("Too much iterations, please check system")
 
             elif args['action'] == 'browse':
                 browse( e3372) 
