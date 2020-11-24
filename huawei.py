@@ -168,15 +168,18 @@ def main():
     parser_sms_action_contact_message.add_argument( "--phone", required=True)
 
     parser_sms_action_mack   = parser_sms_action.add_parser( 'ack-message', help="acknowledge a message")
-    parser_sms_action_mack.add_argument( "--id", required=True)
+    parser_sms_action_mack.add_argument( "--id", type=int, required=True)
 
     parser_sms_action_mdel   = parser_sms_action.add_parser( 'del-message', help="delete a message")
-    parser_sms_action_mdel.add_argument( "--id", required=True)
+    parser_sms_action_mdel.add_argument( "--id", type=int, required=True)
+
+    parser_sms_action_mdel   = parser_sms_action.add_parser( 'retry-message', help="send a message (in draft)")
+    parser_sms_action_mdel.add_argument( "--id", type=int, required=True)
 
     parser_sms_action_cdel   = parser_sms_action.add_parser( 'del-contact', help="delete a contact (and associated messages)")
     parser_sms_action_cdel.add_argument( "--phone", required=True)
 
-    parser_api = subparser_section.add_parser('api', help='helper, direct API call (GET only)'))
+    parser_api = subparser_section.add_parser('api', help='helper, direct API call (GET only)')
     parser_api.add_argument('--path', required=True)
 
 
@@ -302,6 +305,30 @@ def main():
             elif args['action'] == 'del-contact':
                 render( e3372.sms_delete_phone( args['phone']))
           
+            elif args['action'] == 'retry-message':
+
+                index=1
+                found=None
+                while True:
+                    # read only in local-draft 
+                    answer=e3372.sms_list( boxtype=3, page=index, count=PAGINATION)
+                    for message in answer:
+                        if int( message['Index']) == args['id']:
+                            found=message
+                            break
+
+                    if len(answer) < PAGINATION or found!=None:
+                        break
+                    index+=1
+                    if index > 100:
+                        raise Exception("Too much iterations, please check system")
+
+                if found == None:
+                    raise huawei.hilink.ResponseException( 0, "Message not found in draft")
+
+                #resend message
+                render( e3372.send_sms( message["Phone"], message["Content"], index=args['id']))
+
         elif args['section'] == 'api':
             # ensure path starts with /api
             path = args['path']
