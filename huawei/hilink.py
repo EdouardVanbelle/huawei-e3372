@@ -373,6 +373,35 @@ class HuaweiE3372(object):
 
     # -------------------------------------------------- sms
 
+    def sms_config( self):
+        '''get configuration
+
+        return dict:
+            SaveMode: 0
+            Validity: 10752
+            Sca: +33695000695 # <- this is the sms message number
+            UseSReport: 0
+            SendType: 1
+            pagesize: 20
+            maxphone: 50
+            import_enabled: 1
+            url_enabled: 1
+            cdma_enabled: 0
+            smscharlang: 0
+            smsisusepdu: 0
+            sms_center_number_editabled: 0
+            sms_forward_enable: 0
+            switch_enable: 0
+            country_number: None
+            phone_number: None
+        '''
+
+        # FIXME: check to define setter:
+        # with: <?xml version: "1.0" encoding="UTF-8"?><request><SaveMode>0</SaveMode><Validity>10752</Validity><Sca> 33695000695</Sca><UseSReport>1</UseSReport><SendType>1</SendType><switch_enable>0</switch_enable><country_number></country_number><phone_number></phone_number><Priority></Priority></request>
+        # UseSReport = Use Sms Report (purpose =?)
+
+        return self.__get('/api/net/config');
+
     def sms_splifinfo( self):
         ''' unknown purpose
 
