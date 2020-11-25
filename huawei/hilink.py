@@ -1,7 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding=utf-8
 # vim: set fileencoding=utf-8 :
 
+import sys
 import logging
 
 import requests
@@ -10,7 +11,7 @@ import dicttoxml
 
 from collections import OrderedDict
 from datetime import datetime
-from enum import IntEnum
+import enum
 
 # -------------------------------------------------------------------------------------- 
 
@@ -55,8 +56,8 @@ Try Reverse Eng:
 
 '''
 
-
-class SmsType(IntEnum):
+@enum.unique
+class SmsType(enum.IntEnum):
     Simple          = 1 # classic SMS
     Aggregated      = 2 # more than 160 chars
     MMS4            = 4 # MMS (unmanaged case) 
@@ -68,14 +69,16 @@ class SmsType(IntEnum):
     Info            = 10
 
 
-class SmsStatus(IntEnum):
+@enum.unique
+class SmsStatus(enum.IntEnum):
     ReceivedUnseen = 0
     ReceivedSeen   = 1
     Draft          = 2
     SentOk         = 3
     SentError      = 4
 
-class SmsCharset(IntEnum):
+@enum.unique
+class SmsCharset(enum.IntEnum):
     UCS2 = 0
     SEVEN_BIT = 1
     EIGHT_BIT = 2
@@ -184,9 +187,6 @@ class HuaweiE3372(object):
 
         # take the oldest token (first in list)
         token = self.tokens.pop(0)
-
-        if isinstance( payload, unicode):
-            payload = payload.encode( 'utf-8')
 
         #DEBUG print "using token "+token
 

@@ -16,16 +16,21 @@ import huawei.hilinkHelper
 
 PAGINATION=20
 
+# for python2 only:
+if sys.version_info[0] == 2:
+    reload(sys)
+    sys.setdefaultencoding("utf-8")
+
 # -------------------------------------------------------------------------------------------------------
 
 
 def browse( e3372):
 
-    print "device phone number: "+e3372.device_information().get("Msisdn");
+    print( 'device phone number: {phone}'.format( phone=e3372.device_information().get("Msisdn")))
 
-    print "Unread messages: "+e3372.monitoring_check_notifications().get("UnreadMessage")
+    print( 'Unread messages: {count}'.format( count=e3372.monitoring_check_notifications().get("UnreadMessage")))
 
-    print "Total contacts: {count}".format( count = e3372.sms_count_contact())
+    print( 'Total contacts: {count}'.format( count = e3372.sms_count_contact()))
 
 
     contact_index=1
@@ -36,17 +41,17 @@ def browse( e3372):
 
         for raw_contact in contacts:
 
-            print 
+            print
 
             if raw_contact['phone'] == None:
-                print "got a dirty entry, try to purge it"
-                print raw_contact
+                print( "got a dirty entry, try to purge it")
+                print( raw_contact)
 
                 if raw_contact['index'] != 0:
                     try:
-                        print e3372.sms_delete_sms( [raw_contact['index']])
+                        print( e3372.sms_delete_sms( [raw_contact['index']]))
                     except: 
-                        print "Unable to purge entry"
+                        print( "Unable to purge entry")
 
                 continue
 
@@ -54,7 +59,7 @@ def browse( e3372):
             phone=raw_contact["phone"]
             contact = huawei.hilinkHelper.Contact( phone, count=e3372.sms_count_contact( phone), driver=e3372)
 
-            print contact
+            print( contact)
 
             message_index=1
             while True:
@@ -82,13 +87,7 @@ def browse( e3372):
             for index in contact.sorted():
 
                 message = contact.messages[index]
-                print message
-
-
-            #if False and  contact.phone == "+33123456789":
-            #    #print "delete first message"
-            #    #contact.messages[0].drop() 
-
+                print( message)
 
 
         if len(contacts) < PAGINATION:
@@ -107,26 +106,23 @@ def flat_renderer( o, shift=""):
     if isinstance( o, dict):
         for key, value in o.items():
             if isinstance( value, dict) or isinstance( value, list):
-                print "{shift}{key}:".format( shift=shift, key=key)
+                print( "{shift}{key}:".format( shift=shift, key=key))
                 flat_renderer( value, "   "+shift)
             else:
-                if isinstance(value, unicode):
-                    value=value.encode("utf-8")
-                print "{shift}{key}: {value}".format( shift=shift, key=key, value=value)
+                # force encoding with python2
+                print( "{shift}{key}: {value}".format( shift=shift, key=key, value=value))
         print
 
     elif isinstance(o , list):
         for elem in o:
             flat_renderer( elem, "  "+shift)
-        print 
+        print
 
     else:
-        if isinstance( o, unicode):
-            o=o.encode( 'utf-8')
-        print "{shift}{value}".format( shift=shift, value= o)
+        print( "{shift}{value}".format( shift=shift, value= o))
 
 def json_render( o):
-    print json.dumps( o)
+    print( json.dumps( o))
 
 def main():
 
@@ -182,14 +178,14 @@ def main():
     parser_api = subparser_section.add_parser('api', help='helper, direct API call (GET only)')
     parser_api.add_argument('--path', required=True)
 
-
     args = vars( parser.parse_args())
 
-    if args['verbose'] == 1:
-        huawei.hilink.setLogLevel( logging.INFO)
+    if args['verbose'] != None:
+        if args['verbose'] == 1:
+            huawei.hilink.setLogLevel( logging.INFO)
 
-    elif args['verbose'] > 1:
-        huawei.hilink.setLogLevel( logging.DEBUG)
+        elif args['verbose'] > 1:
+            huawei.hilink.setLogLevel( logging.DEBUG)
 
     # FIXME: choose correct renderer according choice
     render = flat_renderer
@@ -311,6 +307,7 @@ def main():
                 found=None
                 while True:
                     # read only in local-draft 
+                    # FIXME: 'd better to use Enum to make more readable code
                     answer=e3372.sms_list( boxtype=3, page=index, count=PAGINATION)
                     for message in answer:
                         if int( message['Index']) == args['id']:
@@ -339,11 +336,11 @@ def main():
             render( e3372.get( path))
 
         else:
-            print "work in progress..."
+            print( "work in progress...")
             return
 
     except huawei.hilink.ResponseException as e:
-        print e
+        print( e)
 
 if __name__ == "__main__":
     main()

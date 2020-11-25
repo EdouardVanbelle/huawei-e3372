@@ -5,8 +5,6 @@
 import re
 import huawei.hilink
 
-# FIXME: need to dig into UTF8 and unicode problems :)
-
 # -------------------------------------------------------------------------------------- 
 # helper 
 def norm_phone( phone):
@@ -71,7 +69,7 @@ class Message(object):
 
 
 
-    def __unicode__( self):
+    def __str__( self):
         new="-"
 
         if self.status == huawei.hilink.SmsStatus.ReceivedSeen:
@@ -84,9 +82,6 @@ class Message(object):
         return u"Message #{number} {direction} [{new}] with {phone} at {date} ({status} {_type}): {content}".format( 
                 number=self.id, new=new, direction=self.dir, phone=self.phone, date=self.date, content=self.content, status=str( self.status), _type=str( self.type)
         )
-
-    def __str__( self):
-        return unicode( self).encode('utf-8')
 
     def __repr__( self):
         return u"<Message id:{number} unread:{unread} dir:{direction} phone:{phone} date:{date} status:{status} content:{content}>".format( 
@@ -137,11 +132,8 @@ class Contact(object):
         self.count  = count
         self.messages = {}
 
-    def __unicode__(self):
-        return u"Contact {phone} (msg: {count})".format( phone=self.phone, count=self.count)
-
     def __str__( self):
-        return unicode( self).encode('utf-8')
+        return u"Contact {phone} (msg: {count})".format( phone=self.phone, count=self.count)
 
     def __repr__(self):
         return u"<Contact phone:{phone} count:{count}>".format( phone=self.phone, count=self.count)
