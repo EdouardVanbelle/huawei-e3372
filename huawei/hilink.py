@@ -373,28 +373,51 @@ class HuaweiE3372(object):
 
     # -------------------------------------------------- sms
 
+    def sms_splifinfo( self):
+        ''' unknown purpose
+
+        return dict:
+            splitinfo: 1
+            convert_type: 2
+        '''
+        return self.__get('/api/sms/splitinfo-sms');
+
+    def sms_feature_switch( self):
+        ''' unknwon purpose
+
+        return dict:
+            getcontactenable: 0
+        '''
+
+        return self.__get('/api/sms/sms-feature_switch');
+
+
     def sms_count( self):
         '''Sms count
+           Important:calling this method also force to refresh sms list 
 
-        Debug:
-        <response>
-                <LocalUnread>1</LocalUnread>
-                <LocalInbox>4</LocalInbox>
-                <LocalOutbox>11</LocalOutbox>
-                <LocalDraft>0</LocalDraft>
-                <LocalDeleted>0</LocalDeleted>
-                <SimUnread>0</SimUnread>
-                <SimInbox>0</SimInbox>
-                <SimOutbox>0</SimOutbox>
-                <SimDraft>0</SimDraft>
-                <LocalMax>500</LocalMax>
-                <SimMax>100</SimMax>
-                <SimUsed>0</SimUsed>
-                <NewMsg>2</NewMsg>
-        </response>
+        return dict:
+            LocalUnread: 6
+            LocalInbox: 21
+            LocalOutbox: 14
+            LocalDraft: 0
+            LocalDeleted: 0
+            SimUnread: 0
+            SimInbox: 0
+            SimOutbox: 0
+            SimDraft: 0
+            LocalMax: 500
+            SimMax: 100
+            SimUsed: 0
+            NewMsg: 0
         '''
 
         return self.__get( '/api/sms/sms-count')
+
+    # lazy shortcut
+    def sms_refresh( self):
+        return self.sms_count()
+
 
     def send_sms(self, phone, message, index=-1, date=None):
         """Send a sms to a given phone

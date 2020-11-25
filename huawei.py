@@ -24,7 +24,7 @@ if sys.version_info[0] == 2:
 # -------------------------------------------------------------------------------------------------------
 
 
-def browse( e3372):
+def browse( e3372, render=None):
 
     print( 'device phone number: {phone}'.format( phone=e3372.device_information().get("Msisdn")))
 
@@ -32,6 +32,8 @@ def browse( e3372):
 
     print( 'Total contacts: {count}'.format( count = e3372.sms_count_contact()))
 
+    # refresh sms list
+    e3372.sms_refresh()
 
     contact_index=1
     while True:
@@ -250,6 +252,7 @@ def main():
                 render( e3372.send_sms( args['phone'], args['message']))
 
             elif args['action'] == 'contact':
+                e3372.sms_refresh()
                 index=1
                 merged=[]
                 while True:
@@ -263,6 +266,7 @@ def main():
                 render( merged)
 
             elif args['action'] == 'list':
+                e3372.sms_refresh()
                 index=1
                 merged=[]
                 while True:
@@ -276,6 +280,7 @@ def main():
                 render( merged)
 
             elif args['action'] == 'list-by-phone':
+                e3372.sms_refresh()
                 index=1
                 merged=[]
                 while True:
@@ -290,7 +295,7 @@ def main():
 
             elif args['action'] == 'browse':
                 #only case where json is not possible
-                browse( e3372) 
+                browse( e3372, render=render) 
 
             elif args['action'] == 'ack-message':
                 render( e3372.sms_set_read( args['id']))
