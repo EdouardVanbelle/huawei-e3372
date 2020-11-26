@@ -71,7 +71,7 @@ errorMessageMapping={
     108006: "wrong password",
     108007: "too many failures, please wait",
     108009: "logged in with different devices",
-    108010: "frequently login", # XXX meaning ?
+    108010: "frequently login", # TODO meaning ?
 
     #Sms
     113055: "sms already changed",
@@ -91,15 +91,11 @@ errorMessageMapping={
 '''
 Try Reverse Eng:
 
-    curbox:
-        0 incoming
-        1 outgoing
-
     savetype:
         3 sent
         0 received
 
-     ConnectionStatus:
+    ConnectionStatus:
        900: connecting
        901: connected
        902: disconnected
@@ -184,6 +180,18 @@ class SmsType(enum.IntEnum):
     Alert           = 9
     Info            = 10
 
+@enum.unique
+class SmsBoxType(enum.IntEnum):
+    LOCAL_INBOX   = 1
+    LOCAL_SENT    = 2
+    LOCAL_DRAFT   = 3
+    LOCAL_TRASH   = 4
+    SIM_INBOX     = 5
+    SIM_SENT      = 6
+    SIM_DRAFT     = 7
+    MIX_INBOX     = 8
+    MIX_SENT      = 9
+    MIX_DRAFT     = 10
 
 @enum.unique
 class SmsStatus(enum.IntEnum):
@@ -194,11 +202,10 @@ class SmsStatus(enum.IntEnum):
     SentError      = 4
 
 @enum.unique
-class SmsCharset(enum.IntEnum):
-    UCS2        = 0
-    SEVEN_BIT   = 1
-    EIGHT_BIT   = 2
-
+class SmsTextMode(enum.IntEnum):
+    MODE_UCS2 = 0
+    MODE_7BIT = 1
+    MODE_8BIT = 2
 
 
 # -------------------------------------------------------------------------------------- 
@@ -639,7 +646,6 @@ class HuaweiE3372(object):
             SimOperEvent
         '''
 
-        # FIXME: should map response
         return self.__get( '/api/monitoring/check-notifications')
 
     def monitoring_month_statistics( self):
@@ -716,9 +722,22 @@ class HuaweiE3372(object):
             phone_number: None
         '''
 
-        # FIXME: check to define setter:
-        # with: <?xml version: "1.0" encoding="UTF-8"?><request><SaveMode>0</SaveMode><Validity>10752</Validity><Sca> 33695000695</Sca><UseSReport>1</UseSReport><SendType>1</SendType><switch_enable>0</switch_enable><country_number></country_number><phone_number></phone_number><Priority></Priority></request>
-        # UseSReport = Use Sms Report (purpose =?)
+        # TODO: check to define setter:
+
+        # with: <?xml version: "1.0" encoding="UTF-8"?>
+        # <request>
+        #   <SaveMode>0</SaveMode>
+        #   <Validity>10752</Validity>
+        #   <Sca> 33695000695</Sca>
+        #   <UseSReport>1</UseSReport>
+        #   <SendType>1</SendType>
+        #   <switch_enable>0</switch_enable>
+        #   <country_number></country_number>
+        #   <phone_number></phone_number>
+        #   <Priority></Priority>
+        # </request>
+
+        # XXX: UseSReport = Use Sms Report (purpose =?)
 
         return self.__get('/api/net/config');
 
@@ -786,7 +805,7 @@ class HuaweiE3372(object):
                 ('Sca',      ""), # XXX: purpose ?
                 ('Content',  message),
                 ('Length',   len( message)),
-                ('Reserved', SmsCharset.EIGHT_BIT.value), 
+                ('Reserved', SmsTextMode.MODE_8BIT.value), 
                 ('Date',     date)
             ])
         )

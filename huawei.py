@@ -11,15 +11,10 @@ import logging
 
 import huawei.hilink
 import huawei.hilinkHelper
+from huawei.hilink import SmsBoxType
 
-# FIXME: need to dig into UTF8 and unicode problems :)
 
 PAGINATION=20
-
-# for python2 only:
-if sys.version_info[0] == 2:
-    reload(sys)
-    sys.setdefaultencoding("utf-8")
 
 # -------------------------------------------------------------------------------------------------------
 
@@ -161,7 +156,7 @@ def main():
 
     parser_sms_action_browse = parser_sms_action.add_parser( 'browse', help="browse contacts and messages")
     parser_sms_action_list   = parser_sms_action.add_parser( 'list', help="list message in a given box")
-    parser_sms_action_list .add_argument( "--box", default=1, type=int, help="1:local-inbox 2:local-sent 3:local-draft 4:local-trash 5:sim-inbox 6:sim-sent 7:sim-draft 8:sim-trash") 
+    parser_sms_action_list.add_argument( "--box", default=1, type=int, help="1:local-inbox 2:local-sent 3:local-draft 4:local-trash 5:sim-inbox 6:sim-sent 7:sim-draft 8:sim-trash") 
 
     parser_sms_action_contact  = parser_sms_action.add_parser( 'contact', help="get contacts and their last message")
 
@@ -196,7 +191,6 @@ def main():
         elif args['verbose'] > 1:
             huawei.hilink.setLogLevel( logging.DEBUG)
 
-    # FIXME: choose correct renderer according choice
     render = flat_renderer
     if args["output"] == "json":
         render = json_render
@@ -213,8 +207,8 @@ def main():
 
             e3372.user_state_login()
 
-            session=e3372.login( args['user'], args['password'].encode() )
             # XXX: do we need to use session information for future usage ?
+            session=e3372.login( args['user'], args['password'].encode() )
 
         #FIXME: I trust that we can easily enhance code below...
         if args['section'] == 'modem':
@@ -329,8 +323,7 @@ def main():
                 found=None
                 while True:
                     # read only in local-draft 
-                    # FIXME: 'd better to use Enum to make more readable code
-                    answer=e3372.sms_list( boxtype=3, page=index, count=PAGINATION)
+                    answer=e3372.sms_list( boxtype=SmsBoxType.LOCAL_DRAFT.value(), page=index, count=PAGINATION)
                     for message in answer:
                         if int( message['Index']) == args['id']:
                             found=message

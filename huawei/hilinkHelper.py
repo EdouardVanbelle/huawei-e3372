@@ -47,19 +47,11 @@ class Message(object):
         self.priority = int( raw['priority'])
         self.savetype = int( raw['savetype'])
 
-        # XXX: unreadcount and curbox are not relevant 
+        #FIXME this seems not to be the SmsBoxType
+        #if 'curbox' in raw:
+        #    self.box      = huawei.hilink.SmsBoxType( int( raw['curbox']))
 
-        #if self.content != None:
-        #    self.content = self.content.encode('utf8')
-
-        if self.status == huawei.hilink.SmsStatus.ReceivedUnseen or self.status == huawei.hilink.SmsStatus.ReceivedSeen:
-            self.dir = u"incoming" 
-        elif self.status == huawei.hilink.SmsStatus.SentError:
-            self.dir = u"out-err " 
-        elif self.status == huawei.hilink.SmsStatus.Draft:
-            self.dir = u"draft   " 
-        else:
-            self.dir = u"outgoing"
+        # XXX meaning of "unreadcount" ? 
 
         self.unread    = (self.status == huawei.hilink.SmsStatus.ReceivedUnseen)
         self.canResend = (self.status == huawei.hilink.SmsStatus.SentError or self.status == huawei.hilink.SmsStatus.Draft)
@@ -79,13 +71,13 @@ class Message(object):
         elif self.status == huawei.hilink.SmsStatus.SentError:
             new='!'
 
-        return u"Message #{number} {direction} [{new}] with {phone} at {date} ({status} {_type}): {content}".format( 
-                number=self.id, new=new, direction=self.dir, phone=self.phone, date=self.date, content=self.content, status=str( self.status), _type=str( self.type)
+        return u"  {number} [{new}] {date} ({_type}): {content}".format( 
+                number=self.id, new=new, phone=self.phone, date=self.date, content=self.content, _type=self.type.name
         )
 
     def __repr__( self):
-        return u"<Message id:{number} unread:{unread} dir:{direction} phone:{phone} date:{date} status:{status} content:{content}>".format( 
-                    number=self.id, unread=self.unread, direction=self.dir, phone=self.phone, date=self.date, content=self.content, status=self.status
+        return u"<Message id:{number} unread:{unread} phone:{phone} date:{date} status:{status} content:{content}>".format( 
+                    number=self.id, unread=self.unread, phone=self.phone, date=self.date, content=self.content, status=self.status
         )
 
 
