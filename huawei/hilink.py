@@ -206,14 +206,6 @@ class SmsCharset(enum.IntEnum):
 class HuaweiE3372(object):
     BASE_URL = 'http://{host}'
     COOKIE_URL = '/html/index.html'
-
-    # all unmapped APIs
-    # details also available on: https://blog.hqcodeshop.fi/archives/259-Huawei-E5186-AJAX-API.html
-    #XML_APIS = [
-    #    '/api/device/basic_information',
-    #    '/api/global/module-switch',
-    #    '/api/net/net-mode',
-    #]
     session = None
 
     def __init__(self, host='192.168.8.1'):
@@ -222,10 +214,10 @@ class HuaweiE3372(object):
         self.base_url = self.BASE_URL.format(host=host)
         self.session = requests.Session()
         self.tokens = []
+
         # get a session cookie by requesting the COOKIE_URL
         r = self.session.get(self.base_url + self.COOKIE_URL)
 
-        _LOGGER.info( r.headers)
 
     def __api_decode( self, response, purgeToken=False):
         '''helper to decode answer from API
@@ -343,9 +335,6 @@ class HuaweiE3372(object):
 
         _LOGGER.info( "POST %s with %s", path, payload)
         _LOGGER.info( "with headers: %s", headers)
-
-
-        # XXX: do we need to force content ? Content-Type: application/x-www-form-urlencoded; charset=UTF-8;
 
         response= self.session.request( 
             'POST', 
@@ -567,43 +556,43 @@ class HuaweiE3372(object):
                 more info: https://wiki.teltonika-networks.com/view/RSSI
 
             return dict: 
-                ('pci', '1')
-                ('sc', None)
-                ('cell_id', '.....')
-                ('rsrq', '-13.0dB')
-                ('rsrp', '-106dBm')
-                ('rssi', '-75dBm')
-                ('sinr', '6dB')
-                ('rscp', None)
-                ('ecio', None)
-                ('mode', '7')
-                ('ulbandwidth', '15MHz')
-                ('dlbandwidth', '15MHz')
-                ('txpower', 'PPusch:22dBm PPucch:11dBm PSrs:22dBm PPrach:17dBm')
-                ('tdd', None)
-                ('ul_mcs', 'mcsUpCarrier1:6')
-                ('dl_mcs', 'mcsDownCarrier1Code0:1 mcsDownCarrier1Code1:0')
-                ('earfcn', 'DL:1675 UL:19675')
-                ('rrc_status', None)
-                ('rac', None)
-                ('lac', None)
-                ('tac', '5902')
-                ('band', '3')
-                ('nei_cellid', 'No1:1No2:62')
-                ('plmn', '20815')
-                ('ims', None)
-                ('wdlfreq', None)
-                ('lteulfreq', '17575')
-                ('ltedlfreq', '18525')
-                ('transmode', None)
-                ('enodeb_id', '0407729')
-                ('cqi0', '32639')
-                ('cqi1', '32639')
-                ('ulfrequency', '1757500kHz')
-                ('dlfrequency', '1852500kHz')
-                ('arfcn', None)
-                ('bsic', None)
-                ('rxlev', None)])
+                pci: '1'
+                sc: None
+                cell_id: '.....'
+                rsrq: '-13.0dB'
+                rsrp: '-106dBm'
+                rssi: '-75dBm'
+                sinr: '6dB'
+                rscp: None
+                ecio: None
+                mode: '7'
+                ulbandwidth: '15MHz'
+                dlbandwidth: '15MHz'
+                txpower: 'PPusch:22dBm PPucch:11dBm PSrs:22dBm PPrach:17dBm'
+                tdd: None
+                ul_mcs: 'mcsUpCarrier1:6'
+                dl_mcs: 'mcsDownCarrier1Code0:1 mcsDownCarrier1Code1:0'
+                earfcn: 'DL:1675 UL:19675'
+                rrc_status: None
+                rac: None
+                lac: None
+                tac: '5902'
+                band: '3'
+                nei_cellid: 'No1:1No2:62'
+                plmn: '20815'
+                ims: None
+                wdlfreq: None
+                lteulfreq: '17575'
+                ltedlfreq: '18525'
+                transmode: None
+                enodeb_id: '0407729'
+                cqi0: '32639'
+                cqi1: '32639'
+                ulfrequency: '1757500kHz'
+                dlfrequency: '1852500kHz'
+                arfcn: None
+                bsic: None
+                rxlev: None
 
         '''
         return self.__get('/api/device/signal')
@@ -623,15 +612,15 @@ class HuaweiE3372(object):
         '''return statistics
 
         return dict: 
-            ('CurrentConnectTime', '2174')
-            ('CurrentUpload', '390')
-            ('CurrentDownload', '255')
-            ('CurrentDownloadRate', '0')
-            ('CurrentUploadRate', '0')
-            ('TotalUpload', '1800371')
-            ('TotalDownload', '687051')
-            ('TotalConnectTime', '612412')
-            ('showtraffic', '1')
+            CurrentConnectTime: '2174'
+            CurrentUpload: '390'
+            CurrentDownload: '255'
+            CurrentDownloadRate: '0'
+            CurrentUploadRate: '0'
+            TotalUpload: '1800371'
+            TotalDownload: '687051'
+            TotalConnectTime: '612412'
+            showtraffic: '1'
         '''
 
         return self.__get( "/api/monitoring/traffic-statistics")
@@ -693,12 +682,12 @@ class HuaweiE3372(object):
         ''' get provider name
 
         return dict: 
-            ('State', '0')
-            ('FullName', '...')
-            ('ShortName', '...')
-            ('Numeric', '...')
-            ('Rat', '7')
-            ('Spn', None)
+            State: '0'
+            FullName: '...'
+            ShortName: '...'
+            Numeric: '...'
+            Rat: '7'
+            Spn: None
         '''
         return self.__get('/api/net/current-plmn');
 
@@ -818,10 +807,7 @@ class HuaweiE3372(object):
     def sms_count_contact(self, phone=None):
         '''count messages for a given phone
 
-        Debug:
-        <response>
-        <count>5</count>
-        </response>
+        return int
         '''
 
         # for scope
@@ -875,6 +861,7 @@ class HuaweiE3372(object):
     def sms_list_contact( self, page=1, count=20):
         '''get all contacts with last message associated
 
+        debug:
         <response>
                 <Count>2</Count>
                 <messages>
@@ -928,34 +915,35 @@ class HuaweiE3372(object):
     def sms_list_phone( self, phone, page=1, count=20):
         '''
         <response>
-        <count>13</count>
-        <messages>
-        <message>
-        <smstat>3</smstat>
-        <index>40000</index>
-        <phone>+33123456789</phone>
-        <content>Hello</content>
-        <date>2020-11-11 17:07:34</date>
-        <sca></sca>
-        <curbox>1</curbox>
-        <savetype>3</savetype>
-        <priority>4</priority>
-        <smstype>1</smstype>
-        </message>
-        ...
-        <message>
-        <smstat>1</smstat>
-        <index>40013</index>
-        <phone>+33123456789</phone>
-        <content>Test only</content>
-        <date>2020-11-21 16:45:44</date>
-        <sca></sca>
-        <curbox>0</curbox>
-        <savetype>0</savetype>
-        <priority>0</priority>
-        <smstype>1</smstype>
-        </message>
-        </messages>
+            <count>13</count>
+            <messages>
+                <message>
+                    <smstat>3</smstat>
+                    <index>40000</index>
+                    <phone>+33123456789</phone>
+                    <content>Hello</content>
+                    <date>2020-11-11 17:07:34</date>
+                    <sca></sca>
+                    <curbox>1</curbox>
+                    <savetype>3</savetype>
+                    <priority>4</priority>
+                    <smstype>1</smstype>
+                </message>
+                ...
+
+                <message>
+                    <smstat>1</smstat>
+                    <index>40013</index>
+                    <phone>+33123456789</phone>
+                    <content>Test only</content>
+                    <date>2020-11-21 16:45:44</date>
+                    <sca></sca>
+                    <curbox>0</curbox>
+                    <savetype>0</savetype>
+                    <priority>0</priority>
+                    <smstype>1</smstype>
+                </message>
+            </messages>
         </response>
         '''
 
@@ -1009,7 +997,6 @@ class HuaweiE3372(object):
     def sms_delete_phone( self, phone):
         """Delete one or multiple phones
 
-        <request><Phones><Phone>+33123456789</Phone></Phones></request>
         """
 
         if not isinstance( phone, list):
@@ -1038,12 +1025,12 @@ class HuaweiE3372(object):
         '''Get dialup connection information
 
         return
-            ('RoamAutoConnectEnable', u'0')
-            ('MaxIdelTime', u'0')
-            ('ConnectMode', u'0')
-            ('MTU', u'1500')
-            ('auto_dial_switch', u'1')
-            ('pdp_always_on', u'0')
+            RoamAutoConnectEnable: u'0'
+            MaxIdelTime: u'0'
+            ConnectMode: u'0'
+            MTU: u'1500'
+            auto_dial_switch: u'1'
+            pdp_always_on: u'0'
         '''
         return self.__get( "/api/dialup/connection")
 
