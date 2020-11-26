@@ -213,7 +213,6 @@ def main():
 
             e3372.user_state_login()
 
-            print( "Logging in...")
             session=e3372.login( args['user'], args['password'].encode() )
             # XXX: do we need to use session information for future usage ?
 
@@ -366,8 +365,7 @@ def main():
     if session != None:
         # clean up session (important, device as a limited number of session)
         try:
-            print( "Logging out...")
-            render( e3372.user_logout())
+            e3372.user_logout()
         except huawei.hilink.ResponseException as e:
             # ignore this error
             print("Error while closing session: %s", e)
