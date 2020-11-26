@@ -30,6 +30,63 @@ def setLogLevel( level):
 class ResponseException(Exception):
     pass
 
+class AuthentificationException(ResponseException):
+    pass
+
+class SessionException(ResponseException):
+    pass
+
+class NetworkException(ResponseException):
+    pass
+
+class SmsException(ResponseException):
+    pass
+
+class WifiException(ResponseException):
+    pass
+
+errorCategoryMapping={
+    100: ResponseException,
+    125: SessionException,
+    108: AuthentificationException,
+    111: NetworkException, 
+    113: SmsException,
+    117: WifiException
+}
+
+errorMessageMapping={
+    # generic
+    100001: "system unknown",
+    100002: "resource not supported",
+    100003: "no rights",
+    100004: "system busy",
+    100005: "missing or wrong argument",
+    100010: "object not found",
+
+    #Auth
+    108001: "wrong username",
+    108002: "wrong password",
+    108003: "already logged in",
+    108005: "too many sessions opened",
+    108006: "wrong password",
+    108007: "too many failures, please wait",
+    108009: "logged in with different devices",
+    108010: "frequently login", # XXX meaning ?
+
+    #Sms
+    113055: "sms already changed",
+    113114: "sms not found",
+
+    #?
+    115002: "cannot change user/password",
+
+    #Session
+    125001: "wrong token",
+    125002: "wrong session",
+    125003: "invalid token"
+}
+
+
 # -------------------------------------------------------------------------------------- 
 '''
 Try Reverse Eng:
@@ -138,9 +195,10 @@ class SmsStatus(enum.IntEnum):
 
 @enum.unique
 class SmsCharset(enum.IntEnum):
-    UCS2 = 0
-    SEVEN_BIT = 1
-    EIGHT_BIT = 2
+    UCS2        = 0
+    SEVEN_BIT   = 1
+    EIGHT_BIT   = 2
+
 
 
 # -------------------------------------------------------------------------------------- 
@@ -202,46 +260,32 @@ class HuaweiE3372(object):
         try:
             data = xmltodict.parse( xml)
         except xmltodict.ExpatError:
-            raise ResponseException( 0, "answer parsing error")
+            raise ValueError( "parsing error")
 
         if "error" in data:
 
             code    = int( data['error']['code'])
             message = data['error']['message']
 
-            #FIXME should use better exception or Enum
-            if   code == 100002:
-                raise ResponseException( code, "resource not found")
-            elif code == 100010:
-                raise ResponseException( code, "object not found")
-            elif code == 100005:
-                raise ResponseException( code, "missing or wrong argument")
-            elif code == 125003:
-                raise ResponseException( code, "invalid token")
-            elif code == 113055: 
-                raise ResponseException( code, "sms already changed")
-            elif code == 113114:
-                raise ResponseException( code, "sms not found")
-            elif code == 108003:
-                raise ResponseException( code, "already logged in")
-            elif code == 108003:
-                raise ResponseException( code, "already logged in")
-            elif code == 108005:
-                raise ResponseException( code, "too many sessions opened")
-            elif code == 108006:
-                raise ResponseException( code, "wrong password")
-            elif code == 108007:
-                raise ResponseException( code, "too many failures, please wait")
-            elif code == 108009:
-                raise ResponseException( code, "logged in with different devices")
-            elif code == 108010:
-                raise ResponseException( code, "frequently login") # XXX meaning ?
-            else:
-                # unknown case
-                raise ResponseException( code, message)
+            errorCategory= int(code/1000);
+
+            # identify the best Exception category
+            try:
+                errorClass=errorCategoryMapping[ errorCategory]
+            except KeyError:
+                errorClass=ResponseException
+
+            # identify the message message if not defined
+            if message == None or len(message) == 0:
+                try:
+                    message = errorMessageMapping[ code ]
+                except KeyError:
+                    message = "error {code}".format( code=code)
+
+            raise errorClass( message)
 
         if not "response" in data:
-            raise Exception("parse exception")
+            raise ValueError("parse exception")
 
         return data.get("response", None)
 
