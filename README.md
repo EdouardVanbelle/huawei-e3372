@@ -142,6 +142,13 @@ $ ./huawei.py sms send --phone '+33...' --message 'Hello you !'
 OK
 ```
 
+Send a message to multiple recipient
+
+$ ./huawei.py -vv --password '...' sms send --phone "+3361....; +3368...." --message 'message multiple 2 !'
+```
+OK
+```
+
 Get all contacts and messages
 
 $ ./huawei.py sms browse

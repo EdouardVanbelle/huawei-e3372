@@ -156,7 +156,7 @@ def main():
 
     parser_sms_action_status = parser_sms_action.add_parser( 'status', help="sms status (informations)")
     parser_sms_action_send   = parser_sms_action.add_parser( 'send', help="send sms")
-    parser_sms_action_send.add_argument( "--phone", required=True)
+    parser_sms_action_send.add_argument( "--phone", required=True, help="accept multiple phones if semicolumn separated")
     parser_sms_action_send.add_argument( "--message", required=True)
 
     parser_sms_action_browse = parser_sms_action.add_parser( 'browse', help="browse contacts and messages")
@@ -265,7 +265,8 @@ def main():
                 render( e3372.sms_count())
 
             elif args['action'] == 'send':
-                render( e3372.send_sms( args['phone'], args['message']))
+                phones = list( map( lambda p: p.strip(), args["phone"].split( ";")))
+                render( e3372.send_sms( phones, args['message']))
 
             elif args['action'] == 'contact':
                 e3372.sms_refresh()
