@@ -1,5 +1,4 @@
 
-- deals with authentification
 - move project into library
 - check function name (have good sense)
 - discovered https://github.com/Salamek/huawei-lte-api/ could merge project to this one 

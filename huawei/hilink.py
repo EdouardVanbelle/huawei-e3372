@@ -9,6 +9,11 @@ import requests
 import xmltodict
 import dicttoxml
 
+import secrets # python3 only 
+import hashlib
+import hmac
+
+
 from collections import OrderedDict
 from datetime import datetime
 import enum
@@ -162,21 +167,35 @@ class HuaweiE3372(object):
         # get a session cookie by requesting the COOKIE_URL
         r = self.session.get(self.base_url + self.COOKIE_URL)
 
-    def __api_decode( self, response):
+        _LOGGER.info( r.headers)
+
+    def __api_decode( self, response, purgeToken=False):
         '''helper to decode answer from API
         '''
 
         # raise exception if status is not 200 OK
         response.raise_for_status()
 
-        # check additional token in answer
-        if '__RequestVerificationToken' in response.headers:
-            self.tokens.append( response.headers['__RequestVerificationToken'])
-            #DEBUG print "additional token "+response.headers['__RequestVerificationToken']
+        # purge previous tokens for methods like challenge_login, authentication_login 
+        if purgeToken:
+            self.tokens=[]
+        else:
+            if '__RequestVerificationTokenone' in response.headers:
+                token=response.headers[ '__RequestVerificationTokenone' ]
+                _LOGGER.debug("found token %s", token)
+                self.tokens.append( token)
+                if '__RequestVerificationTokentwo' in response.headers:
+                    token=response.headers[ '__RequestVerificationTokentwo' ]
+                    _LOGGER.debug("found token %s", token)
+                    self.tokens.append( token)
+            elif '__RequestVerificationToken' in response.headers:
+                token=response.headers[ '__RequestVerificationToken' ]
+                _LOGGER.debug("found token %s", token)
+                self.tokens.append( token)
 
         # Don't check content-type as it is always a text/html event for pure XML answer
 
-        xml = response.content
+        xml = response.content.decode('utf-8')
 
         _LOGGER.debug("answer: %s", xml)
 
@@ -190,7 +209,7 @@ class HuaweiE3372(object):
             code    = int( data['error']['code'])
             message = data['error']['message']
 
-            #FIXME should use better exception
+            #FIXME should use better exception or Enum
             if   code == 100002:
                 raise ResponseException( code, "resource not found")
             elif code == 100010:
@@ -203,6 +222,20 @@ class HuaweiE3372(object):
                 raise ResponseException( code, "sms already changed")
             elif code == 113114:
                 raise ResponseException( code, "sms not found")
+            elif code == 108003:
+                raise ResponseException( code, "already logged in")
+            elif code == 108003:
+                raise ResponseException( code, "already logged in")
+            elif code == 108005:
+                raise ResponseException( code, "too many sessions opened")
+            elif code == 108006:
+                raise ResponseException( code, "wrong password")
+            elif code == 108007:
+                raise ResponseException( code, "too many failures, please wait")
+            elif code == 108009:
+                raise ResponseException( code, "logged in with different devices")
+            elif code == 108010:
+                raise ResponseException( code, "frequently login") # XXX meaning ?
             else:
                 # unknown case
                 raise ResponseException( code, message)
@@ -224,42 +257,68 @@ class HuaweiE3372(object):
     def __get_token(self):
         data=self.__get( "/api/webserver/token")
 
-        token = data.get('token', None);
+        token = data.get('token', None); 
+        
+        token = token[32:]# take only from 32 chars (seen in: public.js)
 
-        _LOGGER.debug( "got token %s", token)
+        _LOGGER.debug( "explicitely fetched token %s", token)
 
         self.tokens.append( token);
 
     def __post_raw( self, 
             path, 
-            payload
+            payload,
+            autoToken=True,
+            headers={},
+            purgeToken=False
         ):
 
-        # get token only if necessary
-        if len( self.tokens) == 0:
-            self.__get_token()
+        
+        headers = { 
+            #'content-type': 'text/xml; charset=utf-8',
+            #'Origin': 'http://192.168.8.1',
+            #'Referer': 'http://192.168.8.1/html/index.html?noredirect',
+            #'User-Agent': 'Mozilla/5.0 X-Requested-With: XMLHttpRequest'
+            'content-type': 'application/x-www-form-urlencoded; charset=UTF-8;', # yes this is not a x-www-form-urlencoded, but keep the same header as original
+            '_ResponseSource': 'Broswer',                                        # kept typo from javascript :)
+            **headers
+        }
 
-        # take the oldest token (first in list)
-        token = self.tokens.pop(0)
+        if autoToken:
 
-        #DEBUG print "using token "+token
+            # get token only if necessary
+            if len( self.tokens) == 0:
+                self.__get_token()
+
+            # take the oldest token (first in list)
+            token = self.tokens.pop(0)
+
+            headers['__RequestVerificationToken'] = token
+
+            #DEBUG print "using token "+token
 
         _LOGGER.info( "POST %s with %s", path, payload)
+        _LOGGER.info( "with headers: %s", headers)
+
 
         # XXX: do we need to force content ? Content-Type: application/x-www-form-urlencoded; charset=UTF-8;
-        return self.__api_decode( self.session.request( 
+
+        response= self.session.request( 
             'POST', 
             self.base_url + path,
-            headers = { 
-                '__RequestVerificationToken' : token,
-                'content-type': 'text/xml; charset=utf-8'},
+            headers=headers,
             data = payload
-        ))
+        )
+
+        return self.__api_decode( response, purgeToken=purgeToken)
 
     def __post_request( self, 
             path,
             data, 
-            item_func=lambda node: node[:-1] # ex: <Phones> will contains array of <Phone>
+            item_func=lambda node: node[:-1], # ex: <Phones> will contains array of <Phone>
+            autoToken=True,
+            headers={},
+            purgeToken=False
         ):
 
         payload = dicttoxml.dicttoxml( 
@@ -269,7 +328,147 @@ class HuaweiE3372(object):
             item_func=item_func
         )
 
-        return self.__post_raw( path, payload)
+        return self.__post_raw( 
+                path, 
+                payload, 
+                autoToken=autoToken, 
+                headers=headers,
+                purgeToken=False
+        )
+
+    # -------------------------------------------------- user
+    def user_login_required( self):
+        # debug <response><hilink_login>1</hilink_login></response>
+        return self.__get('/api/user/hilink_login').get('hilink_login') == '1'
+
+    def user_state_login( self):
+        """
+        return dict
+            password_type: 4
+            extern_password_type: 1
+            history_login_flag: 0
+            State: -1
+            lockstatus: 0
+            password_rule: 0
+            accounts_number: 1
+            rsapadingtype: 1
+            remainwaittime: 0
+            wifipwdsamewithwebpwd: 0
+            username: None
+            firstlogin: 1
+            userlevel: None
+        """
+        return self.__get('/api/user/state-login')
+
+    def user_challenge_login( self, username="admin", firstnonce=None, mode=1):
+        """Low level method"""
+
+        '''
+
+        returns dict:
+            salt: ef08b9....
+            modeselected: 1
+            servernonce: 96701...
+            newType: 0
+            iterations: 100
+        '''
+
+       
+        return self.__post_request( 
+            "/api/user/challenge_login",
+            OrderedDict( [
+                ('username',    username),
+                ('firstnonce',  firstnonce),
+                ('mode',        mode),
+            ]),
+            purgeToken=True
+        )
+
+    def user_authentication_login( self, clientproof, finalnonce ):
+        """Low level method"""
+
+        return self.__post_request( 
+            "/api/user/authentication_login",
+            OrderedDict( [
+                ( 'clientproof', clientproof ), 
+                ( 'finalnonce',  finalnonce  )  
+                # (loginflag , 2) # XXX in which case ? (@see: index.js)
+            ]),
+            purgeToken=True
+        )
+
+    def login( self, user, password):
+        ''' Highlevel method to login
+
+        returns dict: 
+            serversignature: a74c...
+            rsapubkeysignature: 303c...
+            rsae: 010001
+            rsan: a98c...
+
+
+        Helper for tests/debug:
+
+            input: 
+                firstnonce = "6513d4a1bfa0d6b3a7e3320dc6b3b1cd703a479d4958b5e1462658d75f0c5029"
+                password   = b'test'
+
+            fake challenge answer:
+                challenge = {
+                    'salt':"ef08b9902cfb555135d098952c6d4ce629d52a3e835d4831147c96081538113c",
+                    'servernonce':"6513d4a1bfa0d6b3a7e3320dc6b3b1cd703a479d4958b5e1462658d75f0c5029BsP0n8rghqsOgEbevsDvKnn0eCjBfed2",
+                    'iterations':"100"
+                }
+
+            expect:
+                saltedPassword.hex()  = 3bc1cc3158babe19edca5b7f354079fe0f37ea2dc75d9bbd8559e6751dd0380b
+                clientKey.hex()       = 437f560be043f363cf3313c691f702c941d10a2093bcf3d7168922888e461f69
+                storedKey.hex()       = 041b20524f91ca829da22a8e0c81387eeee56f207eaabb077b1912e7eb0e766b
+                clientSignature.hex() = acbe62f1231b408287f534d27b1e4c14e9c53260775dccc5e1aafc7674dbd576
+                clientProof.hex()     = efc134fac358b3e148c62714eae94edda8143840e4e13f12f723defefa9dca1f
+
+        '''
+
+        firstnonce = secrets.token_hex( 32)
+        challenge =  self.user_challenge_login( firstnonce=firstnonce)
+
+        salt       = challenge["salt"]
+        finalnonce = challenge["servernonce"]
+        iterations = int( challenge["iterations"])
+
+        # do signature
+        authMessage = b','.join( [ firstnonce.encode('utf-8'),  finalnonce.encode('utf-8'), finalnonce.encode('utf-8') ])
+
+        saltedPassword = hashlib.pbkdf2_hmac( 'sha256', password, bytes.fromhex( salt), iterations)
+        _LOGGER.debug( "login> clientKey %s", saltedPassword.hex())
+
+        clientKey = hmac.new( b"Client Key", saltedPassword, digestmod=hashlib.sha256).digest()
+        _LOGGER.debug( "login> clientKey %s", clientKey.hex())
+
+        hasher = hashlib.sha256()
+        hasher.update( clientKey)
+        storedKey = hasher.digest()
+        _LOGGER.debug( "login> storedKey %s", storedKey.hex())
+
+        clientSignature = hmac.new( authMessage, storedKey, digestmod="sha256").digest()
+        _LOGGER.debug( "login> clientSignature %s", clientSignature.hex())
+
+        # clientKey XOR clientSignature
+        clientProof = bytes([_a ^ _b for _a, _b in zip( clientKey, clientSignature)])
+        _LOGGER.debug( "login> clientProof %s", clientProof.hex())
+
+        return self.user_authentication_login( 
+                clientProof.hex(), # XML is expecting hex() encoding
+                finalnonce 
+        )
+
+    def user_heartbeat( self):
+        return self.__get( "/api/user/heartbeat")
+
+    def user_logout( self):
+        """ Close session """
+        return self.__post_request( '/api/user/logout', { 'Logout': 1 })
+
 
     # -------------------------------------------------- device
 

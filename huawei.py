@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding=utf-8
 # vim: set fileencoding=utf-8 :
 
@@ -126,29 +126,32 @@ def flat_renderer( o, shift=""):
 def json_render( o):
     print( json.dumps( o))
 
+ 
 def main():
 
     logging.basicConfig()
 
     parser = argparse.ArgumentParser() #prog='PROG')
-    parser.add_argument('--host', default="192.168.8.1", help="IP address to query (default: %(default)s)")
-    parser.add_argument('-v', '--verbose', action="count", help="verbose mode")
-    parser.add_argument('-o', '--output',  default="flat", choices=['flat', 'json'], help="output format (default: %(default)s)")
-    subparser_section = parser.add_subparsers(dest='section', help='section name', title="section command")
+    parser.add_argument('--host',           default="192.168.8.1", help="IP address to query (default: %(default)s)")
+    parser.add_argument('-v', '--verbose',  action="count", help="verbose mode")
+    parser.add_argument('-p', '--password', default=None, help="password for login")
+    parser.add_argument('-u', '--user',     default="admin", help="user for login (default: %(default)s)")
+    parser.add_argument('-o', '--output',   default="flat", choices=['flat', 'json'], help="output format (default: %(default)s)")
+    subparser_section = parser.add_subparsers(dest='section', required=True, title="section command (--help for specific details)")
 
-    parser_device = subparser_section.add_parser('device', help='device operations (--help for details)')
+    parser_device = subparser_section.add_parser('device', help='device operations')
     parser_device.add_argument('action', choices=['information','signal', 'reboot'], help='information')
 
-    parser_monitoring = subparser_section.add_parser('monitoring', help='monitoring operation (--help for details)')
+    parser_monitoring = subparser_section.add_parser('monitoring', help='monitoring operation')
     parser_monitoring.add_argument('action', choices=[ 'statistics', 'status', 'notifications' ], help='net informations')
 
-    parser_net = subparser_section.add_parser('net', help='net operation (--help for details)')
+    parser_net = subparser_section.add_parser('net', help='net operations')
     parser_net.add_argument('action', choices=[ 'statistics', 'provider' ], help='net informations')
 
-    parser_modem = subparser_section.add_parser('modem', help='modem actions (--help for details)')
+    parser_modem = subparser_section.add_parser('modem', help='modem operations')
     parser_modem.add_argument('action', choices=['status', 'on', 'off', 'connection'], help="status, on, off")
 
-    parser_sms = subparser_section.add_parser('sms', help='sms actions (--help for details)')
+    parser_sms = subparser_section.add_parser('sms', help='sms operations')
     parser_sms_action        = parser_sms.add_subparsers(dest='action', help='action name', title="section command")
 
     parser_sms_action_status = parser_sms_action.add_parser( 'status', help="sms status (informations)")
@@ -182,6 +185,10 @@ def main():
 
     args = vars( parser.parse_args())
 
+
+    session=None
+    error=None
+
     if args['verbose'] != None:
         if args['verbose'] == 1:
             huawei.hilink.setLogLevel( logging.INFO)
@@ -195,12 +202,22 @@ def main():
         render = json_render
 
     try:
-
         e3372 = huawei.hilink.HuaweiE3372( host=args['host'])
 
+        if e3372.user_login_required():
+            # ok device is expecting login
+
+            # in this case password becomes mandatory
+            if args["password"] == None:
+                sys.exit( "Password is expected, please add --password in parameters")
+
+            e3372.user_state_login()
+
+            print( "Logging in...")
+            session=e3372.login( args['user'], args['password'].encode() )
+            # XXX: do we need to use session information for future usage ?
+
         #FIXME: I trust that we can easily enhance code below...
-
-
         if args['section'] == 'modem':
 
             if args['action'] == 'status':
@@ -341,11 +358,22 @@ def main():
             render( e3372.get( path))
 
         else:
-            print( "work in progress...")
-            return
+            error="This case should not occurs :)"
 
     except huawei.hilink.ResponseException as e:
-        print( e)
+        error = e
+
+    if session != None:
+        # clean up session (important, device as a limited number of session)
+        try:
+            print( "Logging out...")
+            render( e3372.user_logout())
+        except huawei.hilink.ResponseException as e:
+            # ignore this error
+            print("Error while closing session: %s", e)
+
+    if error != None:
+        sys.exit( error)
 
 if __name__ == "__main__":
     main()

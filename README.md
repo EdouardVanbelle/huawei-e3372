@@ -26,26 +26,28 @@ e3372.send_sms( '+33....', 'Hello world')
 
 $ ./huawei.py --help
 ```
-usage: huawei.py [-h] [--host HOST] [-v] [-o {flat,json}]
+usage: huawei.py [-h] [--host HOST] [-v] [-p PASSWORD] [-u USER]
+                 [-o {flat,json}]
                  {device,monitoring,net,modem,sms,api} ...
 
 optional arguments:
   -h, --help            show this help message and exit
   --host HOST           IP address to query (default: 192.168.8.1)
   -v, --verbose         verbose mode
+  -p PASSWORD, --password PASSWORD
+                        password for login
+  -u USER, --user USER  user for login (default: admin)
   -o {flat,json}, --output {flat,json}
                         output format (default: flat)
 
-section command:
+section command (--help for specific details):
   {device,monitoring,net,modem,sms,api}
-                        section name
-    device              device operations (--help for details)
-    monitoring          monitoring operation (--help for details)
-    net                 net operation (--help for details)
-    modem               modem actions (--help for details)
-    sms                 sms actions (--help for details)
-    api                 direct API call (GET only)
-
+    device              device operations
+    monitoring          monitoring operation
+    net                 net operations
+    modem               modem operations
+    sms                 sms operations
+    api                 helper, direct API call (GET only)
 ```
 
 $ ./huawei.py sms --help
@@ -79,6 +81,26 @@ optional arguments:
   -h, --help  show this help message and exit
   --box BOX   1:local-inbox 2:local-sent 3:local-draft 4:local-trash 5:sim-
               inbox 6:sim-sent 7:sim-draft 8:sim-trash
+```
+
+### when password is required
+
+$ ./huawei.py  monitoring notifications
+
+```
+Password is expected, please add --password in parameters
+```
+
+$ ./huawei.py  --password '...' monitoring notifications
+
+```
+Logging in...
+UnreadMessage: 0
+SmsStorageFull: 0
+OnlineUpdateStatus: 13
+SimOperEvent: 0
+Logging out...
+OK
 ```
 
 ### read device information
