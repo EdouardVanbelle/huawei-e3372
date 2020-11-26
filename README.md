@@ -14,8 +14,20 @@ print "device phone number: "+e3372.device_information().get("Msisdn");
 print "Unread messages: "+e3372.monitoring_check_notifications().get("UnreadMessage")
 print "Total contacts: {count}".format( count = e3372.sms_count_contact())
 
+session=None
+
+if e3372.user_login_required():
+    # ok device is expecting login
+    session=e3372.login( 'admin', 'my pretty password')
+ 
 # send a sms
 e3372.send_sms( '+33....', 'Hello world')
+
+# ...
+
+# do not forget to cleanup session on server side (opened sessions are limited)
+if session != None:
+    e3372.user_logout()
 
 ```
 
