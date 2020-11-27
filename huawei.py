@@ -25,7 +25,9 @@ def browse( e3372, render=None):
 
     print( 'Unread messages: {count}'.format( count=e3372.monitoring_check_notifications().get("UnreadMessage")))
 
-    print( 'Total contacts: {count}'.format( count = e3372.sms_count_contact()))
+    print( 'Total conversations: {count}'.format( count = e3372.sms_count_contact()))
+
+    print()
 
     # refresh sms list
     e3372.sms_refresh()
@@ -80,11 +82,12 @@ def browse( e3372, render=None):
 
 
             # now we have all message for a given contact, print them, sorted by date
-
             for index in contact.sorted():
 
                 message = contact.messages[index]
                 print( message)
+
+            print()
 
 
         if len(contacts) < PAGINATION:

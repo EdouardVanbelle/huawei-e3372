@@ -24,6 +24,17 @@ def norm_phone( phone):
     #XXX: should not occurs, keep current format but should raise an exception
     return phone
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 # -------------------------------------------------------------------------------------- 
 
 class Message(object):
@@ -62,17 +73,21 @@ class Message(object):
 
 
     def __str__( self):
-        new="-"
+        new=">"
+        color=bcolors.OKGREEN
 
         if self.status == huawei.hilink.SmsStatus.ReceivedSeen:
-            new="r"
+            new="<"
+            color=bcolors.OKCYAN
         elif self.status == huawei.hilink.SmsStatus.ReceivedUnseen:
-            new="N"
+            color=bcolors.OKCYAN
+            new=bcolors.BOLD+"N"+bcolors.ENDC
         elif self.status == huawei.hilink.SmsStatus.SentError:
-            new='!'
+            color=bcolors.WARNING
+            new=bcolors.BOLD+"!"+bcolors.ENDC
 
-        return u"  {number} [{new}] {date} ({_type}): {content}".format( 
-                number=self.id, new=new, phone=self.phone, date=self.date, content=self.content, _type=self.type.name
+        return u"  {number} {new} {date} {color}{content}{endcolor}".format( 
+                number=self.id, new=new, phone=self.phone, date=self.date, content=self.content, _type=self.type.name, color=color, endcolor=bcolors.ENDC
         )
 
     def __repr__( self):
@@ -125,7 +140,7 @@ class Contact(object):
         self.messages = {}
 
     def __str__( self):
-        return u"Contact {phone} (msg: {count})".format( phone=self.phone, count=self.count)
+        return u"Conversation with {phone} (msg: {count})".format( phone=self.phone, count=self.count)
 
     def __repr__(self):
         return u"<Contact phone:{phone} count:{count}>".format( phone=self.phone, count=self.count)
