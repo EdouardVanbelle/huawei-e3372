@@ -165,41 +165,58 @@ Get all contacts and messages
 
 $ ./huawei.py sms browse
 ```
-device phone number: +33...
+device phone number: +337...
 Unread messages: 1
-Total contacts: 3
+Total conversations: 4
 
-Contact +33... (msg: 24)
-Message #40002 incoming [r] with +33... at 2020-11-22 01:20:36 (SmsStatus.ReceivedSeen SmsType.Aggregated): Exemple d'un message très long donc qui prend plus d'un seul SMS, le but est de voir le résultat au sein de l'application Huawei. J'espère que ça fonctionnera bien...
-Message #40003 incoming [r] with +33... at 2020-11-22 01:24:28 (SmsStatus.ReceivedSeen SmsType.MMS5): None
-Message #40004 outgoing [-] with +33... at 2020-11-22 12:49:43 (SmsStatus.SentOk SmsType.Simple): Hello you !
-Message #40006 outgoing [-] with +33... at 2020-11-22 12:53:29 (SmsStatus.SentOk SmsType.Simple): Hello you !
-Message #40007 outgoing [-] with +33... at 2020-11-22 12:53:36 (SmsStatus.SentOk SmsType.Simple): Hello you !
-Message #40008 outgoing [-] with +33... at 2020-11-22 12:57:28 (SmsStatus.SentOk SmsType.Simple): Hello you !
-Message #40009 incoming [r] with +33... at 2020-11-22 12:58:00 (SmsStatus.ReceivedSeen SmsType.Simple): Top
-Message #40000 incoming [r] with +33... at 2020-11-22 13:27:43 (SmsStatus.ReceivedSeen SmsType.Simple): A table
-Message #40010 outgoing [-] with +33... at 2020-11-22 14:59:10 (SmsStatus.SentOk SmsType.Simple): Hello you ça marche éhéhé !
-Message #40011 outgoing [-] with +33... at 2020-11-22 15:00:39 (SmsStatus.SentOk SmsType.Simple): test nouveau message
-Message #40012 outgoing [-] with +33... at 2020-11-22 15:02:11 (SmsStatus.SentOk SmsType.Simple): Hello you ça marche éhéhé !
-Message #40013 outgoing [-] with +33... at 2020-11-22 15:04:06 (SmsStatus.SentOk SmsType.Simple): Hello you ! ça marche éhéhé صباح الخير ! 
-Message #40014 incoming [r] with +33... at 2020-11-22 15:04:29 (SmsStatus.ReceivedSeen SmsType.Simple): None
-Message #40015 outgoing [-] with +33... at 2020-11-22 15:04:32 (SmsStatus.SentOk SmsType.Simple): Hello you ! ça marche éhéhé صباح الخير ! 
-Message #40016 incoming [r] with +33... at 2020-11-22 15:05:11 (SmsStatus.ReceivedSeen SmsType.Simple): Test    !
-Message #40001 outgoing [-] with +33... at 2020-11-22 15:17:17 (SmsStatus.SentOk SmsType.Simple): Hello you ça marche éhéhé !
-Message #40018 incoming [r] with +33... at 2020-11-22 15:26:28 (SmsStatus.ReceivedSeen SmsType.Simple): Purge
-Message #40020 incoming [r] with +33... at 2020-11-22 16:30:02 (SmsStatus.ReceivedSeen SmsType.Simple): Ok
-Message #40021 incoming [r] with +33... at 2020-11-22 16:31:03 (SmsStatus.ReceivedSeen SmsType.Simple): Ok 2
-Message #40022 incoming [r] with +33... at 2020-11-22 16:31:44 (SmsStatus.ReceivedSeen SmsType.Simple): Ça marche plus
-Message #40024 incoming [r] with +33... at 2020-11-22 18:12:37 (SmsStatus.ReceivedSeen SmsType.Simple): Encore
-Message #40025 outgoing [-] with +33... at 2020-11-23 12:21:40 (SmsStatus.SentOk SmsType.Simple): Hello you ! ça marche éhéhé ! صباح الخير 
-Message #40026 incoming [r] with +33... at 2020-11-23 12:22:14 (SmsStatus.ReceivedSeen SmsType.Simple): Oui !
-Message #40023 incoming [N] with +33... at 2020-11-23 16:13:10 (SmsStatus.ReceivedUnseen SmsType.Simple): Plop
+Conversation with +3361.... (msg: 37)
+  40002 < 2020-11-22 01:20:36 Exemple d'un message très long donc qui prend plus d'un seul SMS, le but est de voir le résultat au sein de l'application Huawei. J'espère que ça fonctionnera bien...
+  40003 < 2020-11-22 01:24:28 None
+  40007 > 2020-11-22 12:53:36 Hello you !
+  40008 > 2020-11-22 12:57:28 Hello you !
+  40009 < 2020-11-22 12:58:00 Top
+  40000 < 2020-11-22 13:27:43 A table
+  40010 > 2020-11-22 14:59:10 Hello you ça marche éhéhé !
+  40011 > 2020-11-22 15:00:39 test nouveau message
+  40012 > 2020-11-22 15:02:11 Hello you ça marche éhéhé !
+  40013 > 2020-11-22 15:04:06 Hello you ! ça marche éhéhé صباح الخير ! 
+  40014 < 2020-11-22 15:04:29 None
+  40015 > 2020-11-22 15:04:32 Hello you ! ça marche éhéhé صباح الخير ! 
+  40016 < 2020-11-22 15:05:11 Test    !
+  40001 > 2020-11-22 15:17:17 Hello you ça marche éhéhé !
+  40018 < 2020-11-22 15:26:28 Purge
+  40020 < 2020-11-22 16:30:02 Ok
+  40021 < 2020-11-22 16:31:03 Ok 2
+  40022 < 2020-11-22 16:31:44 Ça marche plus
+  40024 < 2020-11-22 18:12:37 Encore
+  40025 > 2020-11-23 12:21:40 Hello you ! ça marche éhéhé ! صباح الخير 
+  40026 < 2020-11-23 12:22:14 Oui !
+  40017 > 2020-11-23 16:05:58 Hello you !
+  40023 < 2020-11-23 16:13:10 Plop
+  40004 > 2020-11-24 01:11:25 got to sleep
+  40006 > 2020-11-25 12:08:07 hééééé, ça marche super !
+  40027 > 2020-11-25 12:08:15 hééééé, ça marche super !
+  40028 < 2020-11-25 12:29:08 New message
+  40029 < 2020-11-25 12:40:23 New 2
+  40030 < 2020-11-25 12:46:18 Yop
+  40031 < 2020-11-25 12:51:03 Yop 2
+  40032 < 2020-11-25 12:51:15 Enfin !
+  40033 < 2020-11-25 12:55:21 Yeee
+  40034 < 2020-11-25 13:00:03 Test
+  40035 > 2020-11-25 16:21:23 hééééé, ça marche super yop !
+  40037 < 2020-11-25 18:40:04 Ok
+  40036 > 2020-11-26 18:20:13 ééé ça marche !
+  40039 N 2020-11-26 18:42:08 Plop
 
-Contact +33... (msg: 1)
-Message #40019 outgoing [-] with +336... at 2020-11-21 21:49:40 (SmsStatus.SentOk SmsType.Simple): j'arrive!
+Conversation with +3361...;+3368... (msg: 1)
+  40038 > 2020-11-26 18:40:43 message multiple !
 
-Contact Free Mobile (msg: 1)
-Message #40005 incoming [r] with Free Mobile at 2020-11-20 11:13:48 (SmsStatus.ReceivedSeen SmsType.Aggregated): INFO FREE : nos boutiques sont ouvertes et vous accueillent en toute sécurité. Pour éviter l'attente, prenez rendez-vous en ligne avec l'un de nos conseillers ! Plus d'infos ou prendre RDV sur bit.ly/Boutiques-Free .
+Conversation with +3371... (msg: 1)
+  40019 > 2020-11-21 21:49:40 j'arrive!
+
+Conversation with Free Mobile (msg: 1)
+  40005 < 2020-11-20 11:13:48 INFO FREE : nos boutiques sont ouvertes et vous accueillent en toute sécurité. Pour éviter l'attente, prenez rendez-vous en ligne avec l'un de nos conseillers ! Plus d'infos ou prendre RDV sur bit.ly/Boutiques-Free .
+
 ```
 
 Acknowledge a message
@@ -210,6 +227,7 @@ OK
 ```
 
 Delete a message
+
 $ ./huawei.py sms del-message --id 40004
 ```
 OK
