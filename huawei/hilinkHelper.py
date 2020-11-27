@@ -2,6 +2,7 @@
 # coding=utf-8
 # vim: set fileencoding=utf-8 :
 
+import sys
 import re
 import huawei.hilink
 
@@ -75,19 +76,28 @@ class Message(object):
     def __str__( self):
         new=">"
         color=bcolors.OKGREEN
+        endcolor=bcolors.ENDC
 
         if self.status == huawei.hilink.SmsStatus.ReceivedSeen:
             new="<"
             color=bcolors.OKCYAN
         elif self.status == huawei.hilink.SmsStatus.ReceivedUnseen:
             color=bcolors.OKCYAN
-            new=bcolors.BOLD+"N"+bcolors.ENDC
+            new="N"
+            if sys.stdout.isatty():
+                new=bcolors.BOLD+new+bcolors.ENDC
         elif self.status == huawei.hilink.SmsStatus.SentError:
             color=bcolors.WARNING
-            new=bcolors.BOLD+"!"+bcolors.ENDC
+            new="!"
+            if sys.stdout.isatty():
+                new=bcolors.BOLD+new+bcolors.ENDC
+
+        if not sys.stdout.isatty():
+            color=""
+            endcolor=""
 
         return u"  {number} {new} {date} {color}{content}{endcolor}".format( 
-                number=self.id, new=new, phone=self.phone, date=self.date, content=self.content, _type=self.type.name, color=color, endcolor=bcolors.ENDC
+                number=self.id, new=new, phone=self.phone, date=self.date, content=self.content, _type=self.type.name, color=color, endcolor=endcolor
         )
 
     def __repr__( self):
