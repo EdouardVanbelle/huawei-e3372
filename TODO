@@ -3,5 +3,7 @@
 - check function name (have good sense)
 - discovered https://github.com/Salamek/huawei-lte-api/ could merge project to this one 
 
+- implement test to validate device or any software upgrade
+
 
 

@@ -21,7 +21,7 @@ PAGINATION=20
 
 def browse( e3372, render=None):
 
-    print( 'device phone number: {phone}'.format( phone=e3372.device_information().get("Msisdn")))
+    print( 'Device phone number: {phone}'.format( phone=e3372.device_information().get("Msisdn")))
 
     print( 'Unread messages: {count}'.format( count=e3372.monitoring_check_notifications().get("UnreadMessage")))
 

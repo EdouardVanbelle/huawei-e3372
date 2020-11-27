@@ -1,6 +1,10 @@
 # Huawei E3372 API wrapper
 
-Inspired from: https://github.com/arska/e3372
+This is a wrapper to handle E3372 devices
+
+Tested device: E3372h-320 (with software version 10.0.3.1)
+
+Code inspired from: https://github.com/arska/e3372
 
 ## API 
 Sample of use:
@@ -9,10 +13,8 @@ Sample of use:
 import pprint
 import huawei.hilink
 
+# connect to device
 e3372 = huawei.hilink.HuaweiE3372()
-print "device phone number: "+e3372.device_information().get("Msisdn");
-print "Unread messages: "+e3372.monitoring_check_notifications().get("UnreadMessage")
-print "Total contacts: {count}".format( count = e3372.sms_count_contact())
 
 session=None
 
@@ -20,6 +22,10 @@ if e3372.user_login_required():
     # ok device is expecting login
     session=e3372.login( 'admin', 'my pretty password')
  
+print "Device phone number: "+e3372.device_information().get("Msisdn");
+print "Unread messages: "+e3372.monitoring_check_notifications().get("UnreadMessage")
+print "Total contacts: {count}".format( count = e3372.sms_count_contact())
+
 # send a sms
 e3372.send_sms( '+33....', 'Hello world')
 
@@ -165,7 +171,7 @@ Get all contacts and messages
 
 $ ./huawei.py sms browse
 ```
-device phone number: +337...
+Device phone number: +337...
 Unread messages: 1
 Total conversations: 4
 
