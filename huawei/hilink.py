@@ -13,7 +13,6 @@ import secrets # python3 only
 import hashlib
 import hmac
 
-
 from collections import OrderedDict
 from datetime import datetime
 import enum
@@ -58,7 +57,7 @@ errorMessageMapping={
     # generic
     100001: "system unknown",
     100002: "resource not supported",
-    100003: "no rights",
+    100003: "no rights",  # or login required ?
     100004: "system busy",
     100005: "missing or wrong argument",
     100010: "object not found",
@@ -88,85 +87,6 @@ errorMessageMapping={
 
 
 # -------------------------------------------------------------------------------------- 
-'''
-Try Reverse Eng:
-
-    savetype:
-        3 sent
-        0 received
-
-    ConnectionStatus:
-       900: connecting
-       901: connected
-       902: disconnected
-       903: disconnecting
-       ...
-
-    NetworkType:
-        0 = 'No Service'
-        1 = 'GSM'
-        2 = 'GPRS (2.5G)'
-        3 = 'EDGE (2.75G)'
-        4 = 'WCDMA (3G)'
-        9 = 'HSPA+ (4G)'
-
-        var MACRO_NET_WORK_TYPE_GPRS = '2';
-        var MACRO_NET_WORK_TYPE_EDGE = '3';
-        var MACRO_NET_WORK_TYPE_WCDMA = '4';
-        var MACRO_NET_WORK_TYPE_HSDPA = '5';
-        var MACRO_NET_WORK_TYPE_HSUPA = '6';
-        var MACRO_NET_WORK_TYPE_HSPA = '7';
-        var MACRO_NET_WORK_TYPE_TDSCDMA = '8';
-        var MACRO_NET_WORK_TYPE_HSPA_PLUS = '9';
-        var MACRO_NET_WORK_TYPE_EVDO_REV_0 = '10';
-        var MACRO_NET_WORK_TYPE_EVDO_REV_A = '11';
-        var MACRO_NET_WORK_TYPE_EVDO_REV_B = '12';
-        var MACRO_NET_WORK_TYPE_1XRTT = '13';
-        var MACRO_NET_WORK_TYPE_UMB = '14';
-        var MACRO_NET_WORK_TYPE_1XEVDV = '15';
-        var MACRO_NET_WORK_TYPE_3XRTT = '16';
-        var MACRO_NET_WORK_TYPE_HSPA_PLUS_64QAM = '17';
-        var MACRO_NET_WORK_TYPE_HSPA_PLUS_MIMO = '18';
-        var MACRO_NET_WORK_TYPE_LTE = '19';
-        var MACRO_NET_WORK_TYPE_LTE_NR = '20';
-        var MACRO_NET_WORK_TYPE_EX_NOSERVICE = '0';
-        var MACRO_NET_WORK_TYPE_EX_GSM = '1';
-        var MACRO_NET_WORK_TYPE_EX_GPRS = '2';
-        var MACRO_NET_WORK_TYPE_EX_EDGE = '3';
-        var MACRO_NET_WORK_TYPE_EX_IS95A = '21';
-        var MACRO_NET_WORK_TYPE_EX_IS95B = '22';
-        var MACRO_NET_WORK_TYPE_EX_CDMA_1X = '23';
-        var MACRO_NET_WORK_TYPE_EX_EVDO_REV_0 = '24';
-        var MACRO_NET_WORK_TYPE_EX_EVDO_REV_A = '25';
-        var MACRO_NET_WORK_TYPE_EX_EVDO_REV_B = '26';
-        var MACRO_NET_WORK_TYPE_EX_HYBRID_CDMA_1X = '27';
-        var MACRO_NET_WORK_TYPE_EX_HYBRID_EVDO_REV_0 = '28';
-        var MACRO_NET_WORK_TYPE_EX_HYBRID_EVDO_REV_A = '29';
-        var MACRO_NET_WORK_TYPE_EX_HYBRID_EVDO_REV_B = '30';
-        var MACRO_NET_WORK_TYPE_EX_EHRPD_REL_0 = '31';
-        var MACRO_NET_WORK_TYPE_EX_EHRPD_REL_A = '32';
-        var MACRO_NET_WORK_TYPE_EX_EHRPD_REL_B = '33';
-        var MACRO_NET_WORK_TYPE_EX_HYBRID_EHRPD_REL_0 = '34';
-        var MACRO_NET_WORK_TYPE_EX_HYBRID_EHRPD_REL_A = '35';
-        var MACRO_NET_WORK_TYPE_EX_HYBRID_EHRPD_REL_B = '36';
-        var MACRO_NET_WORK_TYPE_EX_WCDMA = '41';
-        var MACRO_NET_WORK_TYPE_EX_HSDPA = '42';
-        var MACRO_NET_WORK_TYPE_EX_HSUPA = '43';
-        var MACRO_NET_WORK_TYPE_EX_HSPA = '44';
-        var MACRO_NET_WORK_TYPE_EX_HSPA_PLUS = '45';
-        var MACRO_NET_WORK_TYPE_EX_DC_HSPA_PLUS = '46';
-        var MACRO_NET_WORK_TYPE_EX_TD_SCDMA = '61';
-        var MACRO_NET_WORK_TYPE_EX_TD_HSDPA = '62';
-        var MACRO_NET_WORK_TYPE_EX_TD_HSUPA = '63';
-        var MACRO_NET_WORK_TYPE_EX_TD_HSPA = '64';
-        var MACRO_NET_WORK_TYPE_EX_TD_HSPA_PLUS = '65';
-        var MACRO_NET_WORK_TYPE_EX_802_16E = '81';
-        var MACRO_NET_WORK_TYPE_EX_LTE = '101';
-        var MACRO_NET_WORK_TYPE_EX_LTE_PLUS = '1011';
-        var MACRO_NET_WORK_TYPE_EX_NR = '111';
-
-
-'''
 
 @enum.unique
 class SmsType(enum.IntEnum):
